@@ -6,7 +6,7 @@
 <title>Claude Buddy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../shared/tv.css?v=20261021081911">
+<link rel="stylesheet" href="../shared/tv.css?v=20261021082054">
 <style>
   #scene { position: fixed; inset: 0; width: 100%; height: 100%; }
 
@@ -37,8 +37,8 @@
 
   .card { padding: 2rem 2.2rem; }
 
-  .session { display: flex; align-items: center; gap: 2.2rem; }
-  .ring { position: relative; width: 12rem; height: 12rem; flex: none; }
+  .session { display: flex; align-items: center; gap: 2rem; }
+  .ring { position: relative; width: 11rem; height: 11rem; flex: none; }
   .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
   .ring circle { fill: none; stroke-width: 9; }
   .ring .track { stroke: rgba(255, 255, 255, 0.08); }
@@ -50,7 +50,7 @@
   .ring .pct small { font-size: 1.8rem; font-weight: 700; }
   .ring .sub { font-size: 1.1rem; color: var(--muted); margin-top: 0.3rem; }
 
-  .reset-in { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; margin-top: 0.4rem; }
+  .reset-in { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.02em; margin-top: 0.4rem; white-space: nowrap; }
   .reset-at { font-size: 1.35rem; color: var(--muted); margin-top: 0.2rem; }
 
   .row + .row { margin-top: 1.6rem; }
@@ -123,9 +123,9 @@
 <div class="hint"><span class="key">OK</span> make the robot do a trick</div>
 
 <script type="module">
-import { Robot } from "../shared/robot.js?v=20261021081911";
-import { animate, fitCanvas, shortDuration, countdown, clockTime, native } from "../shared/tv.js?v=20261021081911";
-import { fetchUsage, session, weekly, tightest, moodFor, severityColor, POLL_MS } from "../shared/usage.js?v=20261021081911";
+import { Robot } from "../shared/robot.js?v=20261021082054";
+import { animate, fitCanvas, shortDuration, countdown, clockTime, native } from "../shared/tv.js?v=20261021082054";
+import { fetchUsage, session, weekly, tightest, moodFor, severityColor, POLL_MS } from "../shared/usage.js?v=20261021082054";
 
 native?.keepScreenOn?.(true);
 
