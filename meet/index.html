@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tv.css?v=20261021073418">
+<style>
+  body {
+    background:
+      radial-gradient(60rem 40rem at 80% 0%, rgba(52, 168, 83, 0.16), transparent 70%),
+      radial-gradient(60rem 40rem at 0% 100%, rgba(66, 133, 244, 0.16), transparent 70%),
+      linear-gradient(180deg, #090b18, #10162a);
+  }
+  main { height: 100%; padding: 4rem var(--gutter); display: grid; grid-template-columns: 1fr 34rem; gap: 4rem; }
+
+  h1 { font-size: 4rem; font-weight: 800; letter-spacing: -0.035em; display: flex; align-items: center; gap: 1.4rem; }
+  h1 .logo { width: 4.4rem; height: 4.4rem; border-radius: 1.2rem; background: linear-gradient(135deg, #34a853, #4285f4); display: grid; place-content: center; }
+  .lead { font-size: 1.7rem; color: var(--muted); margin-top: 1rem; max-width: 52rem; line-height: 1.45; }
+
+  .join { margin-top: 3.6rem; padding: 2.6rem; max-width: 56rem; }
+  .join label { display: block; }
+  .field { display: flex; gap: 1.2rem; margin-top: 1.2rem; }
+  input {
+    flex: 1; min-width: 0; height: 6rem; padding: 0 2rem; border-radius: 1.2rem;
+    border: 0.25rem solid var(--line); background: rgba(0, 0, 0, 0.3); color: var(--text);
+    font: 600 2.6rem Inter, Roboto, sans-serif; letter-spacing: 0.08em;
+  }
+  input::placeholder { color: var(--faint); letter-spacing: 0.08em; }
+  input:focus { border-color: var(--accent); background: rgba(0, 0, 0, 0.45); }
+  .button {
+    height: 6rem; padding: 0 3rem; border-radius: 1.2rem; border: 0;
+    background: rgba(255, 255, 255, 0.1); color: var(--text); font: 700 2rem Inter, Roboto, sans-serif;
+    transition: transform 0.15s, background 0.15s;
+  }
+  .button:focus { background: #34a853; transform: scale(1.05); box-shadow: 0 0 0 0.3rem var(--text); }
+  .error { color: var(--critical); font-size: 1.4rem; margin-top: 1rem; min-height: 2rem; }
+  .note { font-size: 1.3rem; color: var(--faint); margin-top: 0.4rem; line-height: 1.5; }
+
+  aside h2 { margin-bottom: 1.4rem; }
+  .list { display: flex; flex-direction: column; gap: 1rem; }
+  .meeting {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 1.4rem 1.8rem; border-radius: 1.2rem; background: var(--surface); border: 1px solid var(--line);
+    transition: transform 0.15s, background 0.15s;
+  }
+  .meeting:focus { background: rgba(52, 168, 83, 0.25); transform: scale(1.03); box-shadow: 0 0 0 0.3rem var(--text); }
+  .meeting .title { font-size: 1.6rem; font-weight: 700; }
+  .meeting .when { font-size: 1.2rem; color: var(--muted); margin-top: 0.2rem; }
+  .meeting .go { font-size: 1.3rem; font-weight: 700; color: #7ee2a0; }
+  .empty { font-size: 1.35rem; color: var(--faint); line-height: 1.5; padding: 1.6rem 1.8rem; border: 0.15rem dashed var(--line); border-radius: 1.2rem; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>
+      <span class="logo"><svg viewBox="0 0 24 24" style="width:2.6rem;height:2.6rem"><path fill="#fff" d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v2.5l4-3v11l-4-3V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+      Meet
+    </h1>
+    <p class="lead">Watch a Google Meet meeting on the big screen. The projector joins as a guest called “Anton's TV”, so the host lets it in.</p>
+
+    <div class="join glass">
+      <label class="eyebrow" for="code">Meeting code</label>
+      <div class="field">
+        <input id="code" data-nav autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="abc-defg-hij">
+        <button class="button" id="go" data-nav>Join</button>
+      </div>
+      <div class="error" id="error"></div>
+      <p class="note">Press OK on the field to type with the remote's keyboard or voice. Paste a full link if you like.<br>
+      The projector has no camera or mic: it watches and listens. Press Back to leave.</p>
+    </div>
+  </section>
+
+  <aside>
+    <div class="eyebrow" style="margin-bottom:1.4rem">Recent</div>
+    <div class="list" id="recent"></div>
+  </aside>
+</main>
+
+<script type="module">
+import { enableDpad, native } from "../shared/tv.js?v=20261021073418";
+
+const input = document.getElementById("code");
+const error = document.getElementById("error");
+
+/** "abc-defg-hij" from a code typed any way, or a meet.google.com link. */
+function parse(text) {
+  const letters = text.toLowerCase().replace(/^.*meet\.google\.com\//, "").replace(/[^a-z]/g, "");
+  return letters.length === 10 ? `${letters.slice(0, 3)}-${letters.slice(3, 7)}-${letters.slice(7)}` : null;
+}
+
+function recent() {
+  try { return JSON.parse(localStorage.getItem("meet.recent") ?? "[]"); } catch { return []; }
+}
+
+function join(code) {
+  const list = [code, ...recent().filter((c) => c !== code)].slice(0, 5);
+  try { localStorage.setItem("meet.recent", JSON.stringify(list)); } catch {}
+  if (native?.openMeet) native.openMeet(code);
+  else if (native) error.textContent = "This needs the newest TV Space: go Home → Updates → Update now.";
+  else window.open(`https://meet.google.com/${code}`, "_blank");
+  renderRecent();
+}
+
+function submit() {
+  const code = parse(input.value);
+  if (!code) { error.textContent = "A meeting code has 10 letters, like abc-defg-hij."; return; }
+  error.textContent = "";
+  input.value = code;
+  join(code);
+}
+
+document.getElementById("go").addEventListener("click", submit);
+input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+input.addEventListener("input", () => { error.textContent = ""; });
+
+function renderRecent() {
+  const codes = recent();
+  const box = document.getElementById("recent");
+  box.innerHTML = codes.length
+    ? codes.map((c) => `<a href="#" class="meeting" data-nav data-code="${c}"><div><div class="title tabular">${c}</div><div class="when">Joined recently</div></div><span class="go">Join ›</span></a>`).join("")
+    : `<div class="empty">Meetings you join appear here, so you can rejoin with one click.</div>`;
+  box.querySelectorAll("[data-code]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); join(a.dataset.code); }));
+}
+
+renderRecent();
+enableDpad();
+input.focus();
+</script>
+</body>
+</html>
