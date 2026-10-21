@@ -21,7 +21,8 @@ const MOVES = {
   unknown: ["look", "think", "idle", "wave", "read"],
 };
 
-const TRICKS = ["dance", "jump", "spin", "juggle", "love", "wave", "celebrate"];
+// Not "celebrate": that one is reserved for a real reset, because its speech bubble says "Fresh limits!".
+const TRICKS = ["dance", "jump", "spin", "juggle", "love", "wave"];
 
 const BLEND = 0.35; // seconds to ease from the previous pose into a new behaviour
 
