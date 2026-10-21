@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TV Space</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/tv.css?v=20261021072658">
+<style>
+  body {
+    background:
+      radial-gradient(60rem 40rem at 15% 10%, rgba(124, 156, 255, 0.16), transparent 70%),
+      radial-gradient(50rem 40rem at 85% 30%, rgba(217, 119, 87, 0.12), transparent 70%),
+      radial-gradient(70rem 50rem at 60% 110%, rgba(160, 90, 220, 0.16), transparent 70%),
+      linear-gradient(180deg, #090b18, #14112b);
+  }
+  #stars { position: fixed; inset: 0; width: 100%; height: 100%; }
+
+  main { position: relative; height: 100%; padding: 4rem var(--gutter) 3.4rem; display: flex; flex-direction: column; }
+
+  .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .greeting { font-size: 3.8rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1.05; }
+  .date { font-size: 1.7rem; color: var(--muted); margin-top: 0.8rem; }
+  .clock { font-size: 5.6rem; font-weight: 700; letter-spacing: -0.04em; line-height: 1; text-align: right; }
+  .clock-sub { font-size: 1.3rem; color: var(--muted); text-align: right; margin-top: 0.6rem; }
+
+  /* The hero takes whatever height is left between the header and the tiles, bottom-aligned. */
+  .hero { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 2.4rem; max-width: 84rem; }
+  .shelf { flex: none; }
+  .hero-name { font-size: 3.2rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+  .hero-desc { font-size: 1.6rem; color: var(--muted); margin-top: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-live { display: flex; align-items: center; gap: 0.9rem; font-size: 1.5rem; font-weight: 600; margin-top: 1.1rem; min-height: 2rem; }
+  .hero > * { flex: none; transition: opacity 0.25s; }
+  .hero.swap > * { opacity: 0; }
+  .shelf .eyebrow { margin-bottom: 1.6rem; }
+  .tiles { display: flex; gap: 2.4rem; }
+
+  .tile {
+    position: relative; width: 20.2rem; flex: none;
+    border-radius: var(--radius); background: var(--surface-solid); border: 1px solid var(--line);
+    overflow: hidden; opacity: 0.82;
+    transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.22s, opacity 0.22s;
+  }
+  .tile:focus {
+    opacity: 1; transform: scale(1.07) translateY(-0.6rem);
+    box-shadow: 0 0 0 0.35rem var(--text), 0 2.4rem 5rem -1rem var(--glow, rgba(124, 156, 255, 0.5));
+  }
+  .art { position: relative; height: 11.4rem; background: var(--art); }
+  .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .art .icon { position: absolute; inset: 0; display: grid; place-content: center; }
+  .meta { padding: 1.2rem 1.6rem 1.4rem; }
+  .name { font-size: 2rem; font-weight: 700; letter-spacing: -0.015em; }
+  .desc { font-size: 1.25rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .chip {
+    position: absolute; left: 1rem; top: 1rem;
+    padding: 0.35rem 0.9rem; border-radius: 2rem;
+    background: rgba(11, 13, 26, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .chip .swatch { width: 0.7rem; height: 0.7rem; border-radius: 50%; }
+  .badge {
+    position: absolute; right: 1rem; top: 1rem; padding: 0.3rem 0.9rem; border-radius: 2rem;
+    background: var(--warning); color: #1a1406; font-size: 1.15rem; font-weight: 800;
+  }
+
+  .tile.soon { opacity: 0.45; background: transparent; border: 0.15rem dashed rgba(255, 255, 255, 0.16); }
+  .tile.soon .art { background: transparent; }
+  .tile.soon .icon { font-size: 4.4rem; filter: grayscale(0.3); }
+
+  footer { display: flex; justify-content: space-between; margin-top: 3rem; font-size: 1.2rem; color: var(--faint); }
+  footer span { display: flex; align-items: center; gap: 0.6rem; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <div class="top">
+    <div>
+      <div class="greeting" id="greeting">Hello</div>
+      <div class="date" id="date"></div>
+    </div>
+    <div>
+      <div class="clock tabular" id="clock"></div>
+      <div class="clock-sub" id="next-reset"></div>
+    </div>
+  </div>
+
+  <section class="hero" id="hero">
+    <div class="hero-name" id="hero-name"></div>
+    <div class="hero-desc" id="hero-desc"></div>
+    <div class="hero-live" id="hero-live"></div>
+  </section>
+
+  <section class="shelf">
+    <div class="eyebrow">Your apps</div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <footer>
+    <span id="version">TV Space</span>
+    <span><span class="key">OK</span> open</span>
+  </footer>
+</main>
+
+<script type="module">
+import { enableDpad, native, animate, fitCanvas, shortDuration, clockTime } from "./shared/tv.js?v=20261021072658";
+import { Robot } from "./shared/robot.js?v=20261021072658";
+import { fetchUsage, session, severityColor } from "./shared/usage.js?v=20261021072658";
+
+// The catalogue. To add an app: make a folder with an index.html next to this file and list it here.
+const APPS = [
+  {
+    id: "claude", name: "Claude Buddy", description: "Your Claude limits, acted out by a little robot",
+    long: "Dances when you've got plenty, naps when you're out, throws a party when your limits reset.",
+    href: "claude/?v=20261021072658", art: "linear-gradient(135deg, #1f1a3a, #4a2a35)", glow: "rgba(217, 119, 87, 0.55)",
+  },
+  {
+    id: "updates", name: "Updates", description: "Check for a new version of TV Space",
+    long: "New screens arrive by themselves. New versions of the app install from here.",
+    action: () => native?.openUpdates(), art: "linear-gradient(135deg, #172447, #2e4f8a)", glow: "rgba(124, 156, 255, 0.55)",
+  },
+  { id: "elysium", name: "Elysium HQ", description: "Projects, deadlines and impact", soon: "🌍" },
+  { id: "cinema", name: "Cinema", description: "Movies and shows from your Mac", soon: "🎬" },
+];
+
+const tiles = document.getElementById("tiles");
+for (const app of APPS) {
+  const el = document.createElement(app.soon ? "div" : "a");
+  el.className = app.soon ? "tile soon" : "tile";
+  if (!app.soon) {
+    el.href = app.href ?? "#";
+    el.dataset.nav = "";
+    el.style.setProperty("--art", app.art);
+    el.style.setProperty("--glow", app.glow);
+    if (app.action) el.addEventListener("click", (e) => { e.preventDefault(); app.action(); });
+    el.addEventListener("focus", () => showHero(app));
+  }
+  el.innerHTML = `
+    <div class="art" id="art-${app.id}">${app.soon ? `<div class="icon">${app.soon}</div>` : ""}</div>
+    <div class="meta">
+      <div class="name">${app.name}</div>
+      ${app.soon ? `<div class="desc">Coming soon</div>` : ""}
+    </div>`;
+  tiles.append(el);
+}
+
+// ---- Hero: describes the focused app ---------------------------------------------------------------
+
+const live = {}; // per-app one-liners, filled in as data arrives
+let heroApp = null;
+
+function showHero(app) {
+  const hero = document.getElementById("hero");
+  const fill = () => {
+    document.getElementById("hero-name").textContent = app.name;
+    document.getElementById("hero-desc").textContent = app.long ?? app.description;
+    document.getElementById("hero-live").innerHTML = live[app.id] ?? "";
+  };
+  if (heroApp === null) fill();
+  else { hero.classList.add("swap"); setTimeout(() => { fill(); hero.classList.remove("swap"); }, 180); }
+  heroApp = app;
+}
+
+function setLive(id, html) {
+  live[id] = html;
+  if (heroApp?.id === id) document.getElementById("hero-live").innerHTML = html;
+}
+
+enableDpad();
+// Come back to the tile you left from.
+const last = sessionStorage.getItem("tile");
+const first = document.querySelector(`[data-nav][href^="${last}"]`) ?? document.querySelector("[data-nav]");
+first.focus();
+showHero(APPS.filter((app) => !app.soon)[[...document.querySelectorAll("[data-nav]")].indexOf(first)]);
+tiles.addEventListener("focusin", (e) => sessionStorage.setItem("tile", e.target.getAttribute("href")));
+
+// ---- Header ---------------------------------------------------------------------------------------
+
+function tick() {
+  const now = new Date();
+  const h = now.getHours();
+  const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  document.getElementById("greeting").textContent = `${part}, Anton`;
+  document.getElementById("date").textContent = now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
+  document.getElementById("clock").textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+tick();
+setInterval(tick, 5000);
+
+// ---- Claude Buddy tile: a live mini robot plus how much is left -----------------------------------
+
+const art = document.getElementById("art-claude");
+const mini = document.createElement("canvas");
+art.append(mini);
+const chip = document.createElement("div");
+chip.className = "chip";
+chip.hidden = true;
+art.append(chip);
+const miniCtx = fitCanvas(mini);
+const robot = new Robot({ compact: true });
+
+async function refreshUsage() {
+  try {
+    const usage = await fetchUsage();
+    const s = session(usage);
+    if (!s) return;
+    chip.hidden = false;
+    chip.innerHTML = `<span class="swatch" style="background:${severityColor(s)}"></span>${s.left}% left`;
+    setLive("claude", `<span class="dot" style="background:${severityColor(s)};box-shadow:0 0 0.8rem ${severityColor(s)}"></span>${s.left}% of your session left · resets ${clockTime(s.resetsAt)}`);
+    document.getElementById("next-reset").textContent = s.resetsAt
+      ? `Claude resets ${clockTime(s.resetsAt)} · in ${shortDuration(s.resetsAt - Date.now())}` : "";
+  } catch {}
+}
+refreshUsage();
+setInterval(refreshUsage, 60000);
+
+// ---- Updates tile ---------------------------------------------------------------------------------
+
+const updatesArt = document.getElementById("art-updates");
+updatesArt.innerHTML = `<div class="icon"><svg width="64" height="64" viewBox="0 0 24 24" style="width:5.6rem;height:5.6rem"><path fill="#f2f4ff" d="M11 3h2v9.17l3.59-3.58L18 10l-6 6-6-6 1.41-1.41L11 12.17zM4 18h16v2H4z"/></svg></div>`;
+const version = native ? JSON.parse(native.version()) : null;
+document.getElementById("version").textContent = version ? `TV Space ${version.name}` : "TV Space · browser preview";
+
+/** Called by the app once it has checked GitHub for a newer version. */
+window.onTvUpdate = (info) => {
+  updatesArt.querySelector(".badge")?.remove();
+  if (info?.available) updatesArt.insertAdjacentHTML("beforeend", `<div class="badge">New · v${info.name}</div>`);
+  setLive("updates", info?.available ? `<span class="dot stale"></span>Version ${info.name} is ready to install` : version ? `<span class="dot"></span>You're on the latest version (${version.name})` : "");
+};
+if (native?.updateInfo) window.onTvUpdate(JSON.parse(native.updateInfo() || "null"));
+
+// ---- Background stars and the mini robot share one animation loop ---------------------------------
+
+const starCanvas = document.getElementById("stars");
+const starCtx = fitCanvas(starCanvas);
+const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), r: 0.4 + Math.random() * 1.1, p: Math.random() * 6 }));
+let clock = 0;
+
+animate((dt) => {
+  clock += dt;
+  const w = starCanvas.width;
+  const h = starCanvas.height;
+  starCtx.clearRect(0, 0, w, h);
+  starCtx.fillStyle = "#fff";
+  for (const s of stars) {
+    starCtx.globalAlpha = 0.15 + 0.55 * Math.abs(Math.sin(clock * 0.6 + s.p));
+    starCtx.beginPath();
+    starCtx.arc(s.x * w, s.y * h, s.r * (w / 1920) * 1.6, 0, Math.PI * 2);
+    starCtx.fill();
+  }
+
+  const mw = mini.width;
+  const mh = mini.height;
+  miniCtx.clearRect(0, 0, mw, mh);
+  const u = Math.min(mw / 26, mh / 19);
+  robot.step(dt, mw / u);
+  robot.draw(miniCtx, mw / 2, mh * 0.86, u, dt);
+});
+</script>
+</body>
+</html>

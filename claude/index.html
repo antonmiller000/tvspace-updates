@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Buddy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tv.css?v=20261021072658">
+<style>
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; }
+
+  header {
+    position: fixed; top: 3rem; left: var(--gutter);
+    display: flex; align-items: center; gap: 1.2rem;
+  }
+  header h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; }
+  header .spark { width: 2.6rem; height: 2.6rem; }
+
+  /* Speech bubble: follows the robot's head, pops in when the robot says something new. */
+  #bubble { position: fixed; left: 0; top: 0; max-width: 24rem; will-change: transform; }
+  #bubble p {
+    padding: 1.1rem 1.5rem; border-radius: 1.4rem 1.4rem 0.4rem 1.4rem;
+    background: var(--text); color: #1a1d33;
+    font-size: 1.55rem; font-weight: 600; line-height: 1.3;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.35);
+    transform-origin: 100% 100%;
+    opacity: 0;
+  }
+  #bubble p.show { animation: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
+  @keyframes pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+
+  aside {
+    position: fixed; top: 3rem; right: var(--gutter); bottom: 3rem; width: 31rem;
+    display: flex; flex-direction: column; gap: 1.4rem;
+  }
+
+  .card { padding: 2rem 2.2rem; }
+
+  .session { display: flex; align-items: center; gap: 2.2rem; }
+  .ring { position: relative; width: 12rem; height: 12rem; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 9; }
+  .ring .track { stroke: rgba(255, 255, 255, 0.08); }
+  .ring .value { stroke-linecap: round; transition: stroke-dashoffset 1.2s ease, stroke 0.6s; }
+  .ring .center {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+  }
+  .ring .pct { font-size: 3.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .ring .pct small { font-size: 1.8rem; font-weight: 700; }
+  .ring .sub { font-size: 1.1rem; color: var(--muted); margin-top: 0.3rem; }
+
+  .reset-in { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; margin-top: 0.4rem; }
+  .reset-at { font-size: 1.35rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .row + .row { margin-top: 1.6rem; }
+  .row-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .row-name { font-size: 1.35rem; color: var(--muted); font-weight: 500; }
+  .row-pct { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; }
+  .row-pct small { font-size: 1.2rem; font-weight: 600; color: var(--muted); margin-left: 0.3rem; }
+  .bar { height: 0.8rem; margin-top: 0.7rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 1rem; transition: width 1.2s ease, background 0.6s; }
+  .row-reset { font-size: 1.2rem; color: var(--faint); margin-top: 0.5rem; }
+
+  .status { display: flex; align-items: center; gap: 0.9rem; font-size: 1.25rem; color: var(--muted); margin-top: auto; padding: 0 0.4rem; }
+
+  .setup h2 { font-size: 2rem; font-weight: 700; margin: 0.6rem 0 0.8rem; }
+  .setup p { font-size: 1.4rem; color: var(--muted); line-height: 1.45; }
+  .setup .detail { font-size: 1.15rem; color: var(--faint); margin-top: 1rem; }
+
+  .hint { position: fixed; left: var(--gutter); bottom: 3rem; font-size: 1.2rem; color: var(--faint); display: flex; gap: 0.6rem; align-items: center; }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<header>
+  <svg class="spark" viewBox="-12 -12 24 24" aria-hidden="true">
+    <g stroke="#d97757" stroke-width="2.6" stroke-linecap="round">
+      <line x1="0" y1="0" x2="10" y2="2"/><line x1="0" y1="0" x2="5" y2="7"/><line x1="0" y1="0" x2="-1" y2="10"/>
+      <line x1="0" y1="0" x2="-6" y2="5"/><line x1="0" y1="0" x2="-10" y2="-1"/><line x1="0" y1="0" x2="-5" y2="-6"/>
+      <line x1="0" y1="0" x2="1" y2="-10"/><line x1="0" y1="0" x2="6" y2="-5"/>
+    </g>
+  </svg>
+  <h1>Claude Buddy</h1>
+</header>
+
+<div id="bubble"><p></p></div>
+
+<aside>
+  <section class="card glass" id="session-card" hidden>
+    <div class="eyebrow">5-hour session</div>
+    <div class="session" style="margin-top: 1.4rem">
+      <div class="ring">
+        <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="44"/><circle class="value" id="ring" cx="50" cy="50" r="44"/></svg>
+        <div class="center"><div class="pct tabular" id="session-left">–</div><div class="sub">left</div></div>
+      </div>
+      <div>
+        <div class="row-name">Resets in</div>
+        <div class="reset-in tabular" id="session-in">–</div>
+        <div class="reset-at" id="session-at"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card glass" id="weekly-card" hidden>
+    <div class="eyebrow">This week</div>
+    <div id="weekly-rows" style="margin-top: 1.4rem"></div>
+  </section>
+
+  <section class="card glass setup" id="setup-card" hidden>
+    <div class="eyebrow">Waiting for your Mac</div>
+    <h2>No limits yet</h2>
+    <p>The helper on your Mac sends your Claude limits here. Once it's signed in to Claude, they show up within a couple of minutes.</p>
+    <p class="detail" id="setup-detail"></p>
+  </section>
+
+  <div class="status"><span class="dot" id="live-dot"></span><span id="status-text">Connecting…</span></div>
+</aside>
+
+<div class="hint"><span class="key">OK</span> make the robot do a trick</div>
+
+<script type="module">
+import { Robot } from "../shared/robot.js?v=20261021072658";
+import { animate, fitCanvas, shortDuration, clockTime, native } from "../shared/tv.js?v=20261021072658";
+import { fetchUsage, session, weekly, tightest, moodFor, severityColor } from "../shared/usage.js?v=20261021072658";
+
+native?.keepScreenOn?.(true);
+
+const canvas = document.getElementById("scene");
+const ctx = fitCanvas(canvas);
+const bubble = document.getElementById("bubble");
+const speech = bubble.firstElementChild;
+const robot = new Robot();
+let usage = null;
+let failed = false;
+
+// ---- Speech ---------------------------------------------------------------------------------------
+
+const left = (l) => `${l.left}%`;
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+const inText = (l) => (l?.resetsAt ? `in ${shortDuration(l.resetsAt - Date.now())}` : "soon");
+const atText = (l) => (l?.resetsAt ? `at ${clockTime(l.resetsAt)}` : "soon");
+
+function line(behavior) {
+  if (!usage) return failed ? "I can't reach the internet right now." : "Looking for your limits…";
+  if (!usage.limits.length) return "Waiting for your Mac to send your limits.";
+  const s = session(usage);
+  const w = weekly(usage);
+  const t = tightest(usage);
+  const lines = {
+    sleep: `Out of juice. Back ${atText(t)}. 💤`,
+    tired: `Only ${left(t)} left. Fresh limits ${inText(t)}.`,
+    stretch: `Running low… ${left(t)} until ${clockTime(t.resetsAt)}.`,
+    celebrate: `Fresh limits! ${left(s)} to play with.`,
+    typing: `${left(s)} of this session left. Let's build!`,
+    think: w ? `This week: ${left(w)} left. Resets ${atText(w)}.` : `Hmm… ${left(s)} left.`,
+    walk: `Next reset ${inText(s)}.`,
+    dance: `${left(s)} left. Plenty of room!`,
+    jump: `${left(s)} left. Let's go!`,
+    spin: `Wheee! ${left(s)} left.`,
+    wave: `Hi! You've got ${left(s)} until ${clockTime(s.resetsAt)}.`,
+    juggle: `Juggling ${left(s)} of your session.`,
+    love: w ? `${left(w)} of your week is still free.` : `${left(s)} left. Have fun!`,
+    coffee: `Coffee break. ${left(s)} left, reset ${inText(s)}.`,
+    read: w ? `Reading up… weekly resets ${atText(w)}.` : null,
+  };
+  return lines[behavior] ?? null;
+}
+
+function say() {
+  const text = line(robot.behavior);
+  if (!text) { speech.classList.remove("show"); return; }
+  if (speech.textContent === text && speech.classList.contains("show")) return;
+  speech.textContent = text;
+  speech.classList.remove("show");
+  void speech.offsetWidth; // restart the pop animation
+  speech.classList.add("show");
+}
+
+robot.onBehavior = say;
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") robot.trick();
+});
+
+// ---- Limits panel ---------------------------------------------------------------------------------
+
+function render() {
+  const has = usage && usage.limits.length > 0;
+  document.getElementById("session-card").hidden = !has;
+  document.getElementById("setup-card").hidden = has;
+
+  const dot = document.getElementById("live-dot");
+  const status = document.getElementById("status-text");
+  const age = usage?.updatedAt ? Date.now() - usage.updatedAt : null;
+  if (failed && !usage) { dot.className = "dot off"; status.textContent = "Offline"; }
+  else if (failed) { dot.className = "dot off"; status.textContent = "Offline · showing last known values"; }
+  else if (age != null && age > 20 * 60000) { dot.className = "dot stale"; status.textContent = `Last update ${shortDuration(age)} ago · is your Mac on?`; }
+  else if (age != null) { dot.className = "dot"; status.textContent = age < 60000 ? "Live · updated just now" : `Live · updated ${shortDuration(age)} ago`; }
+
+  if (!has) {
+    document.getElementById("setup-detail").textContent = usage?.error ?? "";
+    document.getElementById("weekly-card").hidden = true;
+    return;
+  }
+
+  const s = session(usage);
+  const ring = document.getElementById("ring");
+  const circumference = 2 * Math.PI * 44;
+  ring.style.strokeDasharray = circumference;
+  ring.style.strokeDashoffset = circumference * (1 - s.left / 100);
+  ring.style.stroke = severityColor(s);
+  document.getElementById("session-left").innerHTML = `${s.left}<small>%</small>`;
+  document.getElementById("session-in").textContent = s.resetsAt ? shortDuration(s.resetsAt - Date.now()) : "–";
+  document.getElementById("session-at").textContent = s.resetsAt ? `at ${clockTime(s.resetsAt)}` : "";
+
+  const others = usage.limits.filter((l) => l !== s);
+  document.getElementById("weekly-card").hidden = others.length === 0;
+  document.getElementById("weekly-rows").innerHTML = others.map((l) => `
+    <div class="row">
+      <div class="row-head">
+        <span class="row-name">${capitalize(l.label.replace(/^Weekly · /, ""))}</span>
+        <span class="row-pct tabular">${l.left}%<small>left</small></span>
+      </div>
+      <div class="bar"><i style="width:${l.left}%; background:${severityColor(l)}"></i></div>
+      <div class="row-reset">${l.resetsAt ? `Resets ${clockTime(l.resetsAt)} · in ${shortDuration(l.resetsAt - Date.now())}` : ""}</div>
+    </div>`).join("");
+}
+
+async function refresh() {
+  try {
+    usage = await fetchUsage();
+    failed = false;
+  } catch {
+    failed = true;
+  }
+  robot.setMood(moodFor(usage));
+  render();
+  say();
+}
+
+refresh();
+setInterval(refresh, 60000);
+setInterval(render, 15000); // keep countdowns ticking between fetches
+
+// ---- Scene ----------------------------------------------------------------------------------------
+
+const stars = Array.from({ length: 140 }, () => ({
+  x: Math.random(), y: Math.random() * 0.8, r: 0.4 + Math.random() * 1.3, phase: Math.random() * 6, speed: 0.4 + Math.random(),
+}));
+let shooting = null;
+let nextShot = 4;
+let clock = 0;
+
+function drawScene(dt) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const scale = w / 1920;
+  clock += dt;
+
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, "#07081a");
+  sky.addColorStop(0.65, "#191338");
+  sky.addColorStop(1, "#2a1a3d");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, h);
+
+  // Slow-drifting nebulae.
+  for (const [nx, ny, nr, color] of [[0.2, 0.25, 0.35, "124,156,255"], [0.55, 0.15, 0.3, "217,119,87"], [0.85, 0.55, 0.4, "160,90,220"]]) {
+    const x = (nx + Math.sin(clock * 0.03 + nr * 10) * 0.02) * w;
+    const g = ctx.createRadialGradient(x, ny * h, 0, x, ny * h, nr * w);
+    g.addColorStop(0, `rgba(${color},0.13)`);
+    g.addColorStop(1, `rgba(${color},0)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  for (const s of stars) {
+    ctx.globalAlpha = 0.25 + 0.75 * Math.abs(Math.sin(clock * s.speed + s.phase));
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(s.x * w, s.y * h, s.r * scale * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // A shooting star every few seconds.
+  nextShot -= dt;
+  if (nextShot <= 0) {
+    shooting = { x: Math.random() * w * 0.6, y: Math.random() * h * 0.3, t: 0 };
+    nextShot = 6 + Math.random() * 10;
+  }
+  if (shooting) {
+    shooting.t += dt;
+    const p = shooting.t / 0.9;
+    if (p > 1) shooting = null;
+    else {
+      const x = shooting.x + p * w * 0.25;
+      const y = shooting.y + p * h * 0.12;
+      const trail = ctx.createLinearGradient(x, y, x - w * 0.08, y - h * 0.04);
+      trail.addColorStop(0, `rgba(255,255,255,${1 - p})`);
+      trail.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.strokeStyle = trail;
+      ctx.lineWidth = 2.5 * scale;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - w * 0.08, y - h * 0.04);
+      ctx.stroke();
+    }
+  }
+
+  // The little planet the robot lives on.
+  const cx = w * 0.33;
+  const ground = h * 0.74;
+  const R = w * 0.8;
+  const planet = ctx.createRadialGradient(cx, ground - R * 0.02, R * 0.85, cx, ground + R, R);
+  planet.addColorStop(0, "#3b2c5e");
+  planet.addColorStop(0.08, "#2a2048");
+  planet.addColorStop(1, "#120e24");
+  ctx.fillStyle = planet;
+  ctx.beginPath();
+  ctx.arc(cx, ground + R, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(124,156,255,0.35)";
+  ctx.lineWidth = 3 * scale;
+  ctx.beginPath();
+  ctx.arc(cx, ground + R, R, Math.PI * 1.15, Math.PI * 1.85);
+  ctx.stroke();
+  // Craters drift by as the planet turns.
+  ctx.fillStyle = "rgba(10,8,24,0.45)";
+  for (let i = 0; i < 7; i++) {
+    const a = Math.PI * 1.5 + (((i * 0.21 + clock * 0.006) % 1.4) - 0.7);
+    const px = cx + Math.cos(a) * (R - 60 * scale);
+    const py = ground + R + Math.sin(a) * (R - 60 * scale);
+    ctx.beginPath();
+    ctx.ellipse(px, py, (22 + (i % 3) * 14) * scale, (6 + (i % 3) * 4) * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Warm glow behind the robot.
+  const glow = ctx.createRadialGradient(cx, ground - h * 0.12, 0, cx, ground - h * 0.12, h * 0.45);
+  glow.addColorStop(0, "rgba(217,119,87,0.18)");
+  glow.addColorStop(1, "rgba(217,119,87,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+
+  const u = h * 0.032;
+  robot.step(dt, (w * 0.62) / u);
+  const head = robot.draw(ctx, cx, ground, u, dt);
+  placeBubble(head, u);
+}
+
+let bubbleX = null;
+let bubbleY = null;
+
+function placeBubble(head, u) {
+  const ratio = canvas.width / innerWidth;
+  const right = (head.x - 4 * u) / ratio;
+  const bottom = (head.headTop - 1.2 * u) / ratio;
+  const x = Math.max(16, right - bubble.offsetWidth);
+  const y = Math.max(16, bottom - bubble.offsetHeight);
+  bubbleX = bubbleX == null ? x : bubbleX + (x - bubbleX) * 0.15;
+  bubbleY = bubbleY == null ? y : bubbleY + (y - bubbleY) * 0.15;
+  bubble.style.transform = `translate(${bubbleX}px, ${bubbleY}px)`;
+}
+
+animate(drawScene);
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+/* TV Space design system. 1rem = 1/96 of the screen width, so every screen scales with the TV
+   (10px at 960 wide, 20px at 1920). Keep content 4rem from the edges: projectors can crop them. */
+
+:root {
+  --bg: #0b0d1a;
+  --bg-2: #171431;
+  --surface: rgba(26, 29, 51, 0.72);
+  --surface-solid: #1a1d33;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #f2f4ff;
+  --muted: #9aa3c7;
+  --faint: #626a8f;
+  --accent: #7c9cff;
+  --claude: #d97757;
+  --good: #6ee7b7;
+  --warning: #ffb547;
+  --critical: #ff5c6c;
+  --radius: 1.4rem;
+  --gutter: 4rem;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: calc(100vw / 96); }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Roboto", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  cursor: none;
+}
+
+a { color: inherit; text-decoration: none; }
+
+:focus { outline: none; }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.eyebrow {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dot {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 0.8rem var(--good);
+  animation: pulse 2s ease-in-out infinite;
+}
+.dot.stale { background: var(--warning); box-shadow: 0 0 0.8rem var(--warning); }
+.dot.off { background: var(--critical); box-shadow: 0 0 0.8rem var(--critical); animation: none; }
+
+@keyframes pulse { 50% { opacity: 0.35; } }
+
+.key {
+  display: inline-block;
+  min-width: 2.2rem;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
