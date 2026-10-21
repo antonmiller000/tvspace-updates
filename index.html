@@ -6,7 +6,7 @@
 <title>TV Space</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="shared/tv.css?v=20261021081231">
+<link rel="stylesheet" href="shared/tv.css?v=20261021081754">
 <style>
   body {
     background:
@@ -40,7 +40,7 @@
     position: relative; width: 20.2rem; flex: none;
     border-radius: var(--radius); background: var(--surface-solid); border: 1px solid var(--line);
     overflow: hidden; opacity: 0.82;
-    transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.22s, opacity 0.22s;
+    transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.22s;
   }
   .tile:focus {
     opacity: 1; transform: scale(1.07) translateY(-0.6rem);
@@ -56,7 +56,7 @@
   .chip {
     position: absolute; left: 1rem; top: 1rem;
     padding: 0.35rem 0.9rem; border-radius: 2rem;
-    background: rgba(11, 13, 26, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    background: rgba(11, 13, 26, 0.8);
     font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;
   }
   .chip .swatch { width: 0.7rem; height: 0.7rem; border-radius: 50%; }
@@ -106,21 +106,21 @@
 </main>
 
 <script type="module">
-import { enableDpad, native, animate, fitCanvas, shortDuration, clockTime } from "./shared/tv.js?v=20261021081231";
-import { Robot } from "./shared/robot.js?v=20261021081231";
-import { fetchUsage, session, severityColor } from "./shared/usage.js?v=20261021081231";
+import { enableDpad, native, animate, fitCanvas, shortDuration, clockTime } from "./shared/tv.js?v=20261021081754";
+import { Robot } from "./shared/robot.js?v=20261021081754";
+import { fetchUsage, session, severityColor } from "./shared/usage.js?v=20261021081754";
 
 // The catalogue. To add an app: make a folder with an index.html next to this file and list it here.
 const APPS = [
   {
     id: "claude", name: "Claude Buddy", description: "Your Claude limits, acted out by a little robot",
     long: "Dances when you've got plenty, naps when you're out, throws a party when your limits reset.",
-    href: "claude/?v=20261021081231", art: "linear-gradient(135deg, #1f1a3a, #4a2a35)", glow: "rgba(217, 119, 87, 0.55)",
+    href: "claude/?v=20261021081754", art: "linear-gradient(135deg, #1f1a3a, #4a2a35)", glow: "rgba(217, 119, 87, 0.55)",
   },
   {
     id: "meet", name: "Meet", description: "Watch a Google Meet meeting on the big screen",
     long: "Type a meeting code and the projector joins as a guest. Experimental: watch and listen only.",
-    href: "meet/?v=20261021081231", art: "linear-gradient(135deg, #0f3d2a, #1d4f8f)", glow: "rgba(52, 168, 83, 0.55)",
+    href: "meet/?v=20261021081754", art: "linear-gradient(135deg, #0f3d2a, #1d4f8f)", glow: "rgba(52, 168, 83, 0.55)",
     icon: `<svg viewBox="0 0 24 24" style="width:5.6rem;height:5.6rem"><path fill="#f2f4ff" d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v2.5l4-3v11l-4-3V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`,
   },
   {
@@ -239,22 +239,27 @@ if (native?.updateInfo) window.onTvUpdate(JSON.parse(native.updateInfo() || "nul
 
 // ---- Background stars and the mini robot share one animation loop ---------------------------------
 
+// The stars twinkle slowly, so they repaint only a few times a second; the robot gets the full frame rate.
 const starCanvas = document.getElementById("stars");
-const starCtx = fitCanvas(starCanvas);
-const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), r: 0.4 + Math.random() * 1.1, p: Math.random() * 6 }));
+const starCtx = fitCanvas(starCanvas, { maxWidth: 640 });
+const stars = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), r: 0.5 + Math.random() * 1.2, p: Math.random() * 6 }));
 let clock = 0;
+let sinceStars = 1;
 
 animate((dt) => {
   clock += dt;
-  const w = starCanvas.width;
-  const h = starCanvas.height;
-  starCtx.clearRect(0, 0, w, h);
-  starCtx.fillStyle = "#fff";
-  for (const s of stars) {
-    starCtx.globalAlpha = 0.15 + 0.55 * Math.abs(Math.sin(clock * 0.6 + s.p));
-    starCtx.beginPath();
-    starCtx.arc(s.x * w, s.y * h, s.r * (w / 1920) * 1.6, 0, Math.PI * 2);
-    starCtx.fill();
+  sinceStars += dt;
+  if (sinceStars > 0.3) {
+    sinceStars = 0;
+    const w = starCanvas.width;
+    const h = starCanvas.height;
+    starCtx.clearRect(0, 0, w, h);
+    starCtx.fillStyle = "#fff";
+    const size = Math.max(1, 3 * (w / 1920));
+    for (const s of stars) {
+      starCtx.globalAlpha = 0.15 + 0.55 * Math.abs(Math.sin(clock * 0.6 + s.p));
+      starCtx.fillRect(s.x * w, s.y * h, size * s.r, size * s.r);
+    }
   }
 
   const mw = mini.width;

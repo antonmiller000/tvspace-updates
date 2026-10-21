@@ -6,7 +6,7 @@
 <title>Claude Buddy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../shared/tv.css?v=20261021081231">
+<link rel="stylesheet" href="../shared/tv.css?v=20261021081754">
 <style>
   #scene { position: fixed; inset: 0; width: 100%; height: 100%; }
 
@@ -123,14 +123,14 @@
 <div class="hint"><span class="key">OK</span> make the robot do a trick</div>
 
 <script type="module">
-import { Robot } from "../shared/robot.js?v=20261021081231";
-import { animate, fitCanvas, shortDuration, clockTime, native } from "../shared/tv.js?v=20261021081231";
-import { fetchUsage, session, weekly, tightest, moodFor, severityColor } from "../shared/usage.js?v=20261021081231";
+import { Robot } from "../shared/robot.js?v=20261021081754";
+import { animate, fitCanvas, shortDuration, clockTime, native } from "../shared/tv.js?v=20261021081754";
+import { fetchUsage, session, weekly, tightest, moodFor, severityColor } from "../shared/usage.js?v=20261021081754";
 
 native?.keepScreenOn?.(true);
 
 const canvas = document.getElementById("scene");
-const ctx = fitCanvas(canvas);
+const ctx = fitCanvas(canvas, { onResize: () => paintBackdrop() });
 const bubble = document.getElementById("bubble");
 const speech = bubble.firstElementChild;
 const robot = new Robot();
@@ -247,43 +247,84 @@ setInterval(refresh, 60000);
 setInterval(render, 15000); // keep countdowns ticking between fetches
 
 // ---- Scene ----------------------------------------------------------------------------------------
+// The sky, nebulae, planet and glow never change, so they are painted once into `backdrop` and copied
+// onto the screen each frame. Only the twinkling stars, the shooting star and the robot are drawn live.
 
-const stars = Array.from({ length: 140 }, () => ({
-  x: Math.random(), y: Math.random() * 0.8, r: 0.4 + Math.random() * 1.3, phase: Math.random() * 6, speed: 0.4 + Math.random(),
+const stars = Array.from({ length: 70 }, () => ({
+  x: Math.random(), y: Math.random() * 0.8, r: 0.5 + Math.random() * 1.2, phase: Math.random() * 6, speed: 0.4 + Math.random(),
 }));
+const backdrop = document.createElement("canvas");
 let shooting = null;
 let nextShot = 4;
 let clock = 0;
 
-function drawScene(dt) {
+const layout = () => {
   const w = canvas.width;
   const h = canvas.height;
-  const scale = w / 1920;
-  clock += dt;
+  return { w, h, scale: w / 1920, cx: w * 0.33, ground: h * 0.74, R: w * 0.8, u: h * 0.032 };
+};
 
-  const sky = ctx.createLinearGradient(0, 0, 0, h);
+function paintBackdrop() {
+  const { w, h, scale, cx, ground, R } = layout();
+  backdrop.width = w;
+  backdrop.height = h;
+  const b = backdrop.getContext("2d");
+
+  const sky = b.createLinearGradient(0, 0, 0, h);
   sky.addColorStop(0, "#07081a");
   sky.addColorStop(0.65, "#191338");
   sky.addColorStop(1, "#2a1a3d");
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, h);
+  b.fillStyle = sky;
+  b.fillRect(0, 0, w, h);
 
-  // Slow-drifting nebulae.
   for (const [nx, ny, nr, color] of [[0.2, 0.25, 0.35, "124,156,255"], [0.55, 0.15, 0.3, "217,119,87"], [0.85, 0.55, 0.4, "160,90,220"]]) {
-    const x = (nx + Math.sin(clock * 0.03 + nr * 10) * 0.02) * w;
-    const g = ctx.createRadialGradient(x, ny * h, 0, x, ny * h, nr * w);
+    const g = b.createRadialGradient(nx * w, ny * h, 0, nx * w, ny * h, nr * w);
     g.addColorStop(0, `rgba(${color},0.13)`);
     g.addColorStop(1, `rgba(${color},0)`);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
+    b.fillStyle = g;
+    b.fillRect(0, 0, w, h);
   }
 
+  // The little planet the robot lives on.
+  const planet = b.createRadialGradient(cx, ground - R * 0.02, R * 0.85, cx, ground + R, R);
+  planet.addColorStop(0, "#3b2c5e");
+  planet.addColorStop(0.08, "#2a2048");
+  planet.addColorStop(1, "#120e24");
+  b.fillStyle = planet;
+  b.beginPath();
+  b.arc(cx, ground + R, R, 0, Math.PI * 2);
+  b.fill();
+  b.strokeStyle = "rgba(124,156,255,0.35)";
+  b.lineWidth = 3 * scale;
+  b.beginPath();
+  b.arc(cx, ground + R, R, Math.PI * 1.15, Math.PI * 1.85);
+  b.stroke();
+  b.fillStyle = "rgba(10,8,24,0.45)";
+  for (let i = 0; i < 7; i++) {
+    const a = Math.PI * 1.5 + (i * 0.21 - 0.63);
+    b.beginPath();
+    b.ellipse(cx + Math.cos(a) * (R - 60 * scale), ground + R + Math.sin(a) * (R - 60 * scale), (22 + (i % 3) * 14) * scale, (6 + (i % 3) * 4) * scale, 0, 0, Math.PI * 2);
+    b.fill();
+  }
+
+  // Warm glow behind the robot.
+  const glow = b.createRadialGradient(cx, ground - h * 0.12, 0, cx, ground - h * 0.12, h * 0.45);
+  glow.addColorStop(0, "rgba(217,119,87,0.18)");
+  glow.addColorStop(1, "rgba(217,119,87,0)");
+  b.fillStyle = glow;
+  b.fillRect(0, 0, w, h);
+}
+
+function drawScene(dt) {
+  const { w, h, scale, cx, ground, u } = layout();
+  clock += dt;
+  ctx.drawImage(backdrop, 0, 0);
+
+  ctx.fillStyle = "#fff";
+  const size = Math.max(1, 2.2 * scale);
   for (const s of stars) {
     ctx.globalAlpha = 0.25 + 0.75 * Math.abs(Math.sin(clock * s.speed + s.phase));
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(s.x * w, s.y * h, s.r * scale * 1.4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(s.x * w, s.y * h, size * s.r, size * s.r);
   }
   ctx.globalAlpha = 1;
 
@@ -300,10 +341,7 @@ function drawScene(dt) {
     else {
       const x = shooting.x + p * w * 0.25;
       const y = shooting.y + p * h * 0.12;
-      const trail = ctx.createLinearGradient(x, y, x - w * 0.08, y - h * 0.04);
-      trail.addColorStop(0, `rgba(255,255,255,${1 - p})`);
-      trail.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.strokeStyle = trail;
+      ctx.strokeStyle = `rgba(255,255,255,${(1 - p) * 0.8})`;
       ctx.lineWidth = 2.5 * scale;
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -312,61 +350,25 @@ function drawScene(dt) {
     }
   }
 
-  // The little planet the robot lives on.
-  const cx = w * 0.33;
-  const ground = h * 0.74;
-  const R = w * 0.8;
-  const planet = ctx.createRadialGradient(cx, ground - R * 0.02, R * 0.85, cx, ground + R, R);
-  planet.addColorStop(0, "#3b2c5e");
-  planet.addColorStop(0.08, "#2a2048");
-  planet.addColorStop(1, "#120e24");
-  ctx.fillStyle = planet;
-  ctx.beginPath();
-  ctx.arc(cx, ground + R, R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(124,156,255,0.35)";
-  ctx.lineWidth = 3 * scale;
-  ctx.beginPath();
-  ctx.arc(cx, ground + R, R, Math.PI * 1.15, Math.PI * 1.85);
-  ctx.stroke();
-  // Craters drift by as the planet turns.
-  ctx.fillStyle = "rgba(10,8,24,0.45)";
-  for (let i = 0; i < 7; i++) {
-    const a = Math.PI * 1.5 + (((i * 0.21 + clock * 0.006) % 1.4) - 0.7);
-    const px = cx + Math.cos(a) * (R - 60 * scale);
-    const py = ground + R + Math.sin(a) * (R - 60 * scale);
-    ctx.beginPath();
-    ctx.ellipse(px, py, (22 + (i % 3) * 14) * scale, (6 + (i % 3) * 4) * scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Warm glow behind the robot.
-  const glow = ctx.createRadialGradient(cx, ground - h * 0.12, 0, cx, ground - h * 0.12, h * 0.45);
-  glow.addColorStop(0, "rgba(217,119,87,0.18)");
-  glow.addColorStop(1, "rgba(217,119,87,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, w, h);
-
-  const u = h * 0.032;
   robot.step(dt, (w * 0.62) / u);
-  const head = robot.draw(ctx, cx, ground, u, dt);
-  placeBubble(head, u);
+  placeBubble(robot.draw(ctx, cx, ground, u, dt));
 }
 
 let bubbleX = null;
 let bubbleY = null;
 
-function placeBubble(head, u) {
+function placeBubble(head) {
   const ratio = canvas.width / innerWidth;
-  const right = (head.x - 4 * u) / ratio;
-  const bottom = (head.headTop - 1.2 * u) / ratio;
+  const right = (head.x - 4 * layout().u) / ratio;
+  const bottom = (head.headTop - 1.2 * layout().u) / ratio;
   const x = Math.max(16, right - bubble.offsetWidth);
   const y = Math.max(16, bottom - bubble.offsetHeight);
-  bubbleX = bubbleX == null ? x : bubbleX + (x - bubbleX) * 0.15;
-  bubbleY = bubbleY == null ? y : bubbleY + (y - bubbleY) * 0.15;
+  bubbleX = bubbleX == null ? x : bubbleX + (x - bubbleX) * 0.25;
+  bubbleY = bubbleY == null ? y : bubbleY + (y - bubbleY) * 0.25;
   bubble.style.transform = `translate(${bubbleX}px, ${bubbleY}px)`;
 }
 
+paintBackdrop();
 animate(drawScene);
 </script>
 </body>

@@ -41,11 +41,9 @@ a { color: inherit; text-decoration: none; }
 .tabular { font-variant-numeric: tabular-nums; }
 
 .glass {
-  background: var(--surface);
+  background: rgba(22, 24, 46, 0.86);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .eyebrow {

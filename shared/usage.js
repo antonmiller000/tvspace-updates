@@ -26,13 +26,15 @@ function demo(mood) {
 export async function fetchUsage() {
   let data;
   const demoMood = new URLSearchParams(location.search).get("demo");
-  const api = demoMood ? null : await fetch(`https://api.github.com/gists/${GIST}`);
+  // no-cache: GitHub says the answer is good for 60 s, but we want the latest. The browser still sends the ETag,
+  // and an unchanged answer (304) is quick and doesn't count against the rate limit.
+  const api = demoMood ? null : await fetch(`https://api.github.com/gists/${GIST}`, { cache: "no-cache" });
   if (demoMood) {
     data = demo(demoMood);
   } else if (api.ok) {
     data = JSON.parse((await api.json()).files["usage.json"].content);
   } else if (api.status === 403 || api.status === 429) {
-    data = await (await fetch(`https://gist.githubusercontent.com/${OWNER}/${GIST}/raw/usage.json`)).json();
+    data = await (await fetch(`https://gist.githubusercontent.com/${OWNER}/${GIST}/raw/usage.json`, { cache: "no-cache" })).json();
   } else {
     throw new Error(`GitHub answered ${api.status}`);
   }

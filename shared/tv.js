@@ -52,26 +52,37 @@ export function clockTime(date) {
   return `${date.toLocaleDateString([], { weekday: "short" })} ${time}`;
 }
 
-/** Calls `draw(dt)` every frame with seconds since the last one; pauses while the page is hidden. */
-export function animate(draw) {
+/**
+ * Calls `draw(dt)` with seconds since the last call, at most `fps` times a second (the projector's graphics
+ * chip manages about 11 full-screen frames a second, so animations are capped and kept cheap).
+ */
+export function animate(draw, { fps = 30 } = {}) {
+  const interval = 1000 / fps - 2;
   let last = performance.now();
   const frame = (now) => {
-    draw(Math.min((now - last) / 1000, 0.05));
-    last = now;
     requestAnimationFrame(frame);
+    if (now - last < interval) return;
+    draw(Math.min((now - last) / 1000, 0.1));
+    last = now;
   };
   requestAnimationFrame(frame);
 }
 
-/** Sizes a canvas to its element at device resolution and returns its 2D context. */
-export function fitCanvas(canvas) {
+/**
+ * Sizes a canvas to its element and returns its 2D context. Never renders wider than `maxWidth` pixels
+ * (the browser scales it up to the screen): a TV with a 2x pixel ratio would otherwise draw 4x the pixels.
+ * `onResize` runs after every size change, for redrawing cached layers.
+ */
+export function fitCanvas(canvas, { maxWidth = 960, onResize } = {}) {
   const ctx = canvas.getContext("2d");
-  const resize = () => {
-    const scale = window.devicePixelRatio || 1;
-    canvas.width = Math.round(canvas.clientWidth * scale);
-    canvas.height = Math.round(canvas.clientHeight * scale);
+  const resize = (notify = true) => {
+    const scale = Math.min(window.devicePixelRatio || 1, maxWidth / Math.max(canvas.clientWidth, 1));
+    canvas.width = Math.max(1, Math.round(canvas.clientWidth * scale));
+    canvas.height = Math.max(1, Math.round(canvas.clientHeight * scale));
+    if (notify) onResize?.();
   };
-  resize();
-  new ResizeObserver(resize).observe(canvas);
+  // The first size is set silently: the caller isn't ready for `onResize` until fitCanvas has returned.
+  resize(false);
+  new ResizeObserver(() => resize()).observe(canvas);
   return ctx;
 }

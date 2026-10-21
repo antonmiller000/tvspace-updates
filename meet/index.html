@@ -6,7 +6,7 @@
 <title>Meet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../shared/tv.css?v=20261021081231">
+<link rel="stylesheet" href="../shared/tv.css?v=20261021081754">
 <style>
   body {
     background:
@@ -14,24 +14,25 @@
       radial-gradient(60rem 40rem at 0% 100%, rgba(66, 133, 244, 0.16), transparent 70%),
       linear-gradient(180deg, #090b18, #10162a);
   }
-  main { height: 100%; padding: 4rem var(--gutter); display: grid; grid-template-columns: 1fr 34rem; gap: 4rem; }
+  main { height: 100%; padding: 3.4rem var(--gutter); display: grid; grid-template-columns: minmax(0, 1fr) 29rem; gap: 4rem; }
 
-  h1 { font-size: 4rem; font-weight: 800; letter-spacing: -0.035em; display: flex; align-items: center; gap: 1.4rem; }
-  h1 .logo { width: 4.4rem; height: 4.4rem; border-radius: 1.2rem; background: linear-gradient(135deg, #34a853, #4285f4); display: grid; place-content: center; }
-  .lead { font-size: 1.7rem; color: var(--muted); margin-top: 1rem; max-width: 52rem; line-height: 1.45; }
+  h1 { font-size: 3.6rem; font-weight: 800; letter-spacing: -0.035em; display: flex; align-items: center; gap: 1.4rem; }
+  h1 .logo { width: 4rem; height: 4rem; border-radius: 1.2rem; background: linear-gradient(135deg, #34a853, #4285f4); display: grid; place-content: center; }
+  .lead { font-size: 1.55rem; color: var(--muted); margin-top: 0.8rem; max-width: 52rem; line-height: 1.4; }
 
-  .join { margin-top: 3.6rem; padding: 2.6rem; max-width: 56rem; }
+  /* Kept near the top so the on-screen keyboard (the bottom half of the screen) doesn't cover it. */
+  .join { margin-top: 2rem; padding: 2.2rem; }
   .join label { display: block; }
   .field { display: flex; gap: 1.2rem; margin-top: 1.2rem; }
   input {
-    flex: 1; min-width: 0; height: 6rem; padding: 0 2rem; border-radius: 1.2rem;
+    flex: 1; min-width: 0; height: 5.6rem; padding: 0 2rem; border-radius: 1.2rem;
     border: 0.25rem solid var(--line); background: rgba(0, 0, 0, 0.3); color: var(--text);
     font: 600 2.6rem Inter, Roboto, sans-serif; letter-spacing: 0.08em;
   }
   input::placeholder { color: var(--faint); letter-spacing: 0.08em; }
   input:focus { border-color: var(--accent); background: rgba(0, 0, 0, 0.45); }
   .button {
-    height: 6rem; padding: 0 3rem; border-radius: 1.2rem; border: 0;
+    height: 5.6rem; padding: 0 3rem; border-radius: 1.2rem; border: 0;
     background: rgba(255, 255, 255, 0.1); color: var(--text); font: 700 2rem Inter, Roboto, sans-serif;
     transition: transform 0.15s, background 0.15s;
   }
@@ -81,7 +82,7 @@
 </main>
 
 <script type="module">
-import { enableDpad, native } from "../shared/tv.js?v=20261021081231";
+import { enableDpad, native } from "../shared/tv.js?v=20261021081754";
 
 const input = document.getElementById("code");
 const error = document.getElementById("error");
