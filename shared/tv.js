@@ -44,6 +44,16 @@ export function shortDuration(ms) {
   return `${minutes}m`;
 }
 
+/** "3h 28m 05s" while under a day, so a countdown visibly ticks; "2d 3h" beyond that. */
+export function countdown(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+  const two = (n) => String(n).padStart(2, "0");
+  if (d >= 1) return `${d}d ${h}h`;
+  if (h >= 1) return `${h}h ${two(m)}m ${two(s)}s`;
+  return `${m}m ${two(s)}s`;
+}
+
 /** "11:39" within a day, "Sat 08:00" further out. */
 export function clockTime(date) {
   if (!date) return "the reset";

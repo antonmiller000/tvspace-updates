@@ -6,7 +6,7 @@
 <title>Meet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../shared/tv.css?v=20261021081754">
+<link rel="stylesheet" href="../shared/tv.css?v=20261021081911">
 <style>
   body {
     background:
@@ -37,6 +37,7 @@
     transition: transform 0.15s, background 0.15s;
   }
   .button:focus { background: #34a853; transform: scale(1.05); box-shadow: 0 0 0 0.3rem var(--text); }
+  .button.ghost { height: 4.4rem; font-size: 1.5rem; padding: 0 2rem; background: transparent; border: 0.15rem solid var(--line); }
   .error { color: var(--critical); font-size: 1.4rem; margin-top: 1rem; min-height: 2rem; }
   .note { font-size: 1.3rem; color: var(--faint); margin-top: 0.4rem; line-height: 1.5; }
 
@@ -69,9 +70,9 @@
         <input id="code" data-nav autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="abc-defg-hij">
         <button class="button" id="go" data-nav>Join</button>
       </div>
+      <div style="margin-top:1.4rem"><button class="button ghost" id="signin" data-nav>Sign in to Google</button></div>
       <div class="error" id="error"></div>
-      <p class="note">Press OK on the field to type with the remote's keyboard or voice. Paste a full link if you like.<br>
-      The projector has no camera or mic: it watches and listens. Press Back to leave.</p>
+      <p class="note">Signing in to Google (once) makes Meet far more likely to let the projector in. You type your account on the projector yourself. Press Back to leave a meeting.</p>
     </div>
   </section>
 
@@ -82,7 +83,7 @@
 </main>
 
 <script type="module">
-import { enableDpad, native } from "../shared/tv.js?v=20261021081754";
+import { enableDpad, native } from "../shared/tv.js?v=20261021081911";
 
 const input = document.getElementById("code");
 const error = document.getElementById("error");
@@ -115,6 +116,10 @@ function submit() {
 }
 
 document.getElementById("go").addEventListener("click", submit);
+document.getElementById("signin").addEventListener("click", () => {
+  if (native?.signInToGoogle) native.signInToGoogle();
+  else error.textContent = "This needs the newest TV Space: go Home → Updates → Update now.";
+});
 input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
 input.addEventListener("input", () => { error.textContent = ""; });
 

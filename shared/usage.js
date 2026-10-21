@@ -8,6 +8,9 @@
 const OWNER = "antonmiller000";
 const GIST = "d53693b4791df95a59f51756c53633c9";
 
+/** How often to ask GitHub. It allows 60 requests an hour per network, and an unchanged answer still counts. */
+export const POLL_MS = 75000;
+
 /** Made-up numbers for previewing a mood: add ?demo=plenty (or okay, low, empty) to the page URL. */
 function demo(mood) {
   const used = { plenty: [18, 22, 4], okay: [61, 48, 10], low: [88, 71, 30], empty: [100, 83, 41] }[mood];

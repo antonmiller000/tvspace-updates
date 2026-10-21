@@ -6,7 +6,7 @@
 <title>TV Space</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="shared/tv.css?v=20261021081754">
+<link rel="stylesheet" href="shared/tv.css?v=20261021081911">
 <style>
   body {
     background:
@@ -106,21 +106,21 @@
 </main>
 
 <script type="module">
-import { enableDpad, native, animate, fitCanvas, shortDuration, clockTime } from "./shared/tv.js?v=20261021081754";
-import { Robot } from "./shared/robot.js?v=20261021081754";
-import { fetchUsage, session, severityColor } from "./shared/usage.js?v=20261021081754";
+import { enableDpad, native, animate, fitCanvas, shortDuration, clockTime } from "./shared/tv.js?v=20261021081911";
+import { Robot } from "./shared/robot.js?v=20261021081911";
+import { fetchUsage, session, severityColor, POLL_MS } from "./shared/usage.js?v=20261021081911";
 
 // The catalogue. To add an app: make a folder with an index.html next to this file and list it here.
 const APPS = [
   {
     id: "claude", name: "Claude Buddy", description: "Your Claude limits, acted out by a little robot",
     long: "Dances when you've got plenty, naps when you're out, throws a party when your limits reset.",
-    href: "claude/?v=20261021081754", art: "linear-gradient(135deg, #1f1a3a, #4a2a35)", glow: "rgba(217, 119, 87, 0.55)",
+    href: "claude/?v=20261021081911", art: "linear-gradient(135deg, #1f1a3a, #4a2a35)", glow: "rgba(217, 119, 87, 0.55)",
   },
   {
     id: "meet", name: "Meet", description: "Watch a Google Meet meeting on the big screen",
     long: "Type a meeting code and the projector joins as a guest. Experimental: watch and listen only.",
-    href: "meet/?v=20261021081754", art: "linear-gradient(135deg, #0f3d2a, #1d4f8f)", glow: "rgba(52, 168, 83, 0.55)",
+    href: "meet/?v=20261021081911", art: "linear-gradient(135deg, #0f3d2a, #1d4f8f)", glow: "rgba(52, 168, 83, 0.55)",
     icon: `<svg viewBox="0 0 24 24" style="width:5.6rem;height:5.6rem"><path fill="#f2f4ff" d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v2.5l4-3v11l-4-3V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`,
   },
   {
@@ -220,7 +220,7 @@ async function refreshUsage() {
   } catch {}
 }
 refreshUsage();
-setInterval(refreshUsage, 60000);
+setInterval(refreshUsage, POLL_MS);
 
 // ---- Updates tile ---------------------------------------------------------------------------------
 
