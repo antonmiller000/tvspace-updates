@@ -68,3 +68,21 @@ accounts are never collected.
 ```
 python3 -m unittest discover -s tests
 ```
+
+## Android app (APK)
+
+`android/` wraps the same engine in an Android app (phones, tablets and Android TV,
+Android 7.0+). The Python engine runs inside the app; a notification keeps long
+searches alive in the background and has a **Quit** button. Telegram links open in
+the Telegram app; exports are saved to Downloads.
+
+Build (needs the Android SDK, JDK 17+, and `python3.11` on PATH):
+
+```
+cd android
+echo "sdk.dir=/path/to/android-sdk" > local.properties
+gradle :app:assembleRelease -PksFile=/path/key.jks -PksPass=... -PksAlias=...
+```
+
+Without the `-Pks…` options the APK is signed with the debug key. Updates install
+over an older version only when signed with the same key.

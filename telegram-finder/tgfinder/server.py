@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import os
+import pkgutil
 import re
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,8 +13,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from .engine import PRESETS, Job
 from .store import Store
 from .tgapi import Tg, TgError
-
-HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 class App:
@@ -89,8 +88,7 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self, method: str, path: str, q: dict):
         app = self.app
         if method == "GET" and path == "/":
-            with open(os.path.join(HERE, "static", "index.html"), "rb") as f:
-                return self._send(200, f.read(), "text/html")
+            return self._send(200, pkgutil.get_data("tgfinder", "static/index.html"), "text/html")
         if path == "/api/presets":
             return self._send(200, PRESETS)
         if path == "/api/jobs" and method == "GET":
