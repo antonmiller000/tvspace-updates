@@ -41,30 +41,104 @@ def parse_terms(query: str, extra: str = "") -> list[str]:
     return terms
 
 
+STOP = set("""a an and are as at be by for from in is it of on or the to with your our you we new all best top
+и в во на с со к по за из у о об от для не это как что или а но наш ваш все мы вы
+і й та на з до від для це як що або про
+channel channels group groups chat chats news official telegram tg bot https http www com org info
+канал каналы группа группы чат чаты новости официальный телеграм телеграмм подписывайтесь подписаться
+канали група групи чати новини""".split())
+
+
 def _words(term: str) -> list[str]:
-    return [w for w in re.findall(r"[^\W_]+", term.lower()) if len(w) >= 2] or [term.lower()]
+    ws = [w for w in re.findall(r"[^\W_]+", term.lower()) if len(w) >= 2]
+    return [w for w in ws if w not in STOP] or ws or [term.lower()]
+
+
+def stem(w: str) -> str:
+    """Crude suffix stripping so word forms match (cars/car, электромобили/электромобилей)."""
+    w = w.lower()
+    if re.search(r"[а-яёіїєґ]", w):
+        return w[:-2] if len(w) >= 7 else w[:-1] if len(w) >= 5 else w
+    if len(w) >= 5 and w.endswith("ies"):
+        return w[:-3]
+    if len(w) >= 7 and w.endswith("ing"):
+        return w[:-3]
+    if len(w) >= 6 and w.endswith("es"):
+        return w[:-2]
+    if len(w) >= 4 and w.endswith("s") and not w.endswith("ss"):
+        return w[:-1]
+    return w
+
+
+def _word_rx(w: str):
+    st = stem(w)
+    tail = r"(?![^\W_])" if len(w) <= 3 else ""  # very short words must match whole
+    return re.compile(r"(?<![^\W_])" + re.escape(st.casefold()) + tail)
 
 
 class Matcher:
-    """A text matches a term when every word of that term occurs in the text."""
+    """Graded matching.
 
-    def __init__(self, terms: list[str]):
-        self.terms = terms
-        self._words = {t: _words(t) for t in terms}
-        self._squashed = {t: {re.sub(r"[^a-z0-9]", "", ascii_fold(t)), re.sub(r"[\W_]", "", t)} - {""}
-                          for t in terms}
+    Strong terms are what the user asked for (plus translations); weak terms are
+    related topics learned during the search. A *full* hit means every word of a
+    term occurs (any word form); a *partial* hit means only some words do.
+    """
 
-    def hits(self, text: str) -> list[str]:
+    def __init__(self, terms: list[str], weak: list[str] | None = None):
+        self.terms = list(terms)
+        self.weak = [t for t in (weak or []) if t not in self.terms]
+        self._rx = {t: [_word_rx(w) for w in _words(t)] for t in self.terms + self.weak}
+        self._sq = {t: self._squash(t) for t in self.terms + self.weak}
+
+    @staticmethod
+    def _squash(term: str) -> set[str]:
+        ws = _words(term)
+        forms = {"".join(stem(w) for w in ws), "".join(ws)}
+        forms |= {re.sub(r"[^a-z0-9]", "", ascii_fold(f)) for f in list(forms)}
+        return {f for f in forms if len(f) >= 4}
+
+    def _grade(self, term: str, low: str) -> float:
+        rx = self._rx[term]
+        n = sum(1 for r in rx if r.search(low))
+        if n == len(rx):
+            return 1.0
+        if len(rx) > 1 and any(f in low for f in self._sq[term] if len(f) >= 7):
+            return 1.0  # written together: #ElectricCars
+        return n / len(rx)
+
+    def grades(self, text: str) -> tuple[list[str], list[str]]:
+        """(full hits of strong terms, weaker hits: partial strong + full weak)."""
         low = (text or "").casefold()
         if not low:
-            return []
-        return [t for t in self.terms if all(w.casefold() in low for w in self._words[t])]
+            return [], []
+        full, part = [], []
+        for t in self.terms:
+            g = self._grade(t, low)
+            if g == 1.0:
+                full.append(t)
+            elif g >= 0.5:
+                part.append(t)
+        part += [t for t in self.weak if self._grade(t, low) == 1.0]
+        return full, part
+
+    def hits(self, text: str) -> list[str]:
+        return self.grades(text)[0]
+
+    def username_grades(self, username: str) -> tuple[list[str], list[str]]:
+        u = re.sub(r"[^a-z0-9]", "", (username or "").lower())
+        tokens = set(re.split(r"[_\d]+", (username or "").lower()))
+        if not u:
+            return [], []
+
+        def ok(t):
+            if any(f in u for f in self._sq[t]):
+                return True
+            ws = _words(t)
+            return len(ws) == 1 and ascii_fold(ws[0]) in tokens
+        return [t for t in self.terms if ok(t)], [t for t in self.weak if ok(t)]
 
     def username_hits(self, username: str) -> list[str]:
-        u = re.sub(r"[^a-z0-9]", "", (username or "").lower())
-        if not u:
-            return []
-        return [t for t in self.terms if any(len(s) >= 3 and s in u for s in self._squashed[t])]
+        return self.username_grades(username)[0]
 
 
 def username_guesses(terms: list[str], limit: int = 400) -> list[str]:

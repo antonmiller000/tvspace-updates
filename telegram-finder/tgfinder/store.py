@@ -28,10 +28,10 @@ CREATE TABLE IF NOT EXISTS known(
 """
 # Columns added after the first release (name, type).
 ENTITY_EXTRA = [("last_post", "TEXT"), ("online", "INTEGER"), ("activity", "TEXT"),
-                ("is_new", "INTEGER"), ("photo", "TEXT"), ("first_seen", "REAL")]
+                ("is_new", "INTEGER"), ("photo", "TEXT"), ("first_seen", "REAL"), ("level", "TEXT")]
 ENTITY_COLS = ["job_id", "ref", "kind", "title", "description", "members", "verified", "score",
                "relevant", "depth", "sources", "matched", "inbound", "post_hits", "found",
-               "last_post", "online", "activity", "is_new", "photo", "first_seen"]
+               "last_post", "online", "activity", "is_new", "photo", "first_seen", "level"]
 
 ENTITY_SORTS = {
     "score": "relevant DESC, score DESC, members DESC",
@@ -116,7 +116,7 @@ class Store:
                json.dumps(sorted(e.get("sources", []))), json.dumps(sorted(e.get("matched", []))),
                len(e.get("inbound", ())), e.get("post_hits", 0), e.get("found", time.time()),
                e.get("last_post"), e.get("online"), e.get("activity", "unknown"),
-               int(bool(e.get("is_new"))), e.get("photo"), e.get("first_seen"))
+               int(bool(e.get("is_new"))), e.get("photo"), e.get("first_seen"), e.get("level", "exact"))
         with self.lock:
             self.db.execute("INSERT OR REPLACE INTO entities(%s) VALUES(%s)"
                             % (",".join(ENTITY_COLS), ",".join("?" * len(ENTITY_COLS))), row)
@@ -153,7 +153,7 @@ class Store:
 
     def entities(self, job_id: int, kinds: list[str] | None = None, relevant_only: bool = True,
                  text: str = "", min_members: int = 0, sort: str = "score",
-                 new_only: bool = False, active_only: bool = False,
+                 new_only: bool = False, active_only: bool = False, exact_only: bool = False,
                  limit: int = 200, offset: int = 0) -> tuple[int, list[dict]]:
         where, args = ["job_id=?"], [job_id]
         if kinds:
@@ -171,6 +171,8 @@ class Store:
             where.append("is_new=1")
         if active_only:
             where.append("activity='active'")
+        if exact_only:
+            where.append("COALESCE(level,'exact') IN ('exact','posts')")
         w = " AND ".join(where)
         with self.lock:
             self.db.commit()
@@ -194,9 +196,10 @@ class Store:
             args += kinds + ["dead"]
         with self.lock:
             r = self.db.execute(
-                "SELECT COUNT(*), SUM(is_new=1), SUM(activity='active'), SUM(activity='dead') "
+                "SELECT COUNT(*), SUM(is_new=1), SUM(activity='active'), SUM(activity='dead'), "
+                "SUM(COALESCE(level,'exact') IN ('exact','posts')) "
                 f"FROM entities WHERE {where}", args).fetchone()
-        return {"all": r[0] or 0, "new": r[1] or 0, "active": r[2] or 0, "dead": r[3] or 0}
+        return {"all": r[0] or 0, "new": r[1] or 0, "active": r[2] or 0, "dead": r[3] or 0, "exact": r[4] or 0}
 
     # ---- posts
     def save_post(self, job_id: int, p: dict, matched: list[str]):

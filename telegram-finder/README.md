@@ -14,6 +14,13 @@ Every chat is checked live and marked:
 - **Active / Quiet / Inactive / Gone** — from the date of the newest post (channels),
   people online (groups), or a link that no longer works. Dead links are dropped.
 
+Results are not limited to the exact words. A search also covers other word forms
+(car / cars, электромобили / электромобилей), automatic translations of your words
+(English and Russian by default, more under **More options**), channels that write
+about the topic without naming it, and chats that several matching chats point to.
+Those looser matches are tagged **Related** and rank below direct ones; the **Exact**
+filter hides them.
+
 ## Start
 
 ```

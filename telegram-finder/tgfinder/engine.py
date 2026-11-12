@@ -14,7 +14,7 @@ import threading
 import time
 import traceback
 
-from . import keywords, tme, websearch
+from . import expand, keywords, tme, websearch
 
 PRESETS = {
     "quick": {"depth": 1, "history_pages": 1, "minutes": 10, "max_entities": 1500, "guesses": 80, "pages_scale": 0.5},
@@ -50,12 +50,16 @@ DEFAULT_SOURCES = {"web": True, "directories": True, "guess": True, "crawl": Tru
 
 class Job:
     def __init__(self, store, tg, query: str, extra: str = "", seeds: str = "", preset: str = "deep",
-                 kinds: list[str] | None = None, sources: dict | None = None, workers: int = 6, **overrides):
+                 kinds: list[str] | None = None, sources: dict | None = None, workers: int = 6,
+                 languages: list[str] | None = None, **overrides):
         self.store, self.tg = store, tg
         self.terms = keywords.parse_terms(query, extra)
         if not self.terms:
             raise ValueError("Enter at least one keyword")
+        self.query_terms = list(self.terms)
+        self.weak: list[str] = []
         self.matcher = keywords.Matcher(self.terms)
+        self.languages = [l for l in (["en", "ru"] if languages is None else languages) if l in expand.LANGUAGES]
         self.p = dict(PRESETS.get(preset, PRESETS["deep"]))
         for k, v in overrides.items():
             if k in self.p and v not in (None, ""):
@@ -65,7 +69,7 @@ class Job:
         self.seeds = sorted(tme.extract_refs(seeds) | {r for r in map(tme.norm_ref, seeds.split()) if r})
         self.workers = max(1, min(int(workers), 8))
         self.params = {"terms": self.terms, "preset": preset, "kinds": self.kinds, "sources": self.sources,
-                       "seeds": self.seeds, **self.p}
+                       "seeds": self.seeds, "terms": list(self.terms), "languages": self.languages, **self.p}
         self.id = store.create_job(query, self.params)
 
         self.fetcher = tme.Fetcher()
@@ -84,6 +88,7 @@ class Job:
         self.log: list[dict] = []
         self.stats = {"checked": 0, "found": 0, "relevant": 0, "channels": 0, "groups": 0, "bots": 0,
                       "posts": 0, "requests": 0, "queue": 0, "dead": 0, "new": 0, "active": 0}
+        self._learned_at = time.time()
         self.source_fail: dict[str, int] = {}
         self.source_found: dict[str, int] = {}
         self.use_tg = bool(self.sources.get("telegram") and tg and tg.ready())
@@ -112,7 +117,7 @@ class Job:
     def snapshot(self) -> dict:
         with self.lock:
             s = dict(self.stats)
-            s.update(queue=len(self.heap) + len(self.web_heap) + len(self.tg_heap), requests=self.fetcher.requests,
+            s.update(related_terms=list(self.weak), terms=list(self.terms), queue=len(self.heap) + len(self.web_heap) + len(self.tg_heap), requests=self.fetcher.requests,
                      elapsed=int(time.time() - self.started), sources=dict(self.source_found),
                      telegram_account=self.use_tg)
             return s
@@ -129,6 +134,12 @@ class Job:
                     self.cv.notify_all()
                     break
             self.store.update_job(self.id, "running", self.snapshot())
+            if time.time() - self._learned_at > 12:
+                self._learned_at = time.time()
+                try:
+                    self._learn()
+                except Exception:
+                    traceback.print_exc()
         deadline = time.time() + 40
         while self.active and time.time() < deadline:
             time.sleep(0.3)
@@ -166,7 +177,7 @@ class Job:
         # Instant answers: chats remembered from earlier searches that match now.
         remembered = 0
         for k in self.store.known_all():
-            if self.matcher.hits(f"{k['title']} {k['description']}") or self.matcher.username_hits(k["ref"]):
+            if any(self.matcher.grades(f"{k['title']} {k['description']}")) or any(self.matcher.username_grades(k["ref"])):
                 self.candidate(k["ref"], 0, "memory", prio=0.5 + remembered * 0.001)
                 e = self.ents.get(k["ref"])
                 if e and e["kind"] == "new":
@@ -179,26 +190,69 @@ class Job:
             self.note(f"{remembered} matching chats remembered from earlier searches (re-checking them now)")
         for ref in self.seeds:
             self.candidate(ref, 0, "seed")
-        if self.sources.get("web") or self.sources.get("directories"):
-            jobs = websearch.tasks(self.terms, self.sources.get("web"), self.sources.get("directories"),
-                                   self.p["pages_scale"])
-            for i, (source, url) in enumerate(jobs):
-                self._push(1 + i * 0.2, ("web", source, url))
-            self.note(f"Queued {len(jobs)} web / directory queries")
-        if self.sources.get("guess"):
-            guesses = keywords.username_guesses(self.terms, self.p["guesses"])
-            for i, g in enumerate(guesses):
-                self.candidate(g, 0, "guess", prio=3 + i * 0.01)
-            self.note(f"Probing {len(guesses)} likely usernames")
+        self._seed_terms(self.terms, strong=True)
         if self.use_tg:
-            for i, q in enumerate(keywords.search_variants(self.terms)):
-                self._push(i, ("tg_search", q), tg=True)
-            for i, t in enumerate(self.terms):
-                self._push(0.5 + i, ("tg_posts", t), tg=True)
-                self._push(0.6 + i, ("tg_mine", t), tg=True)
             self.note("Telegram account connected: using Telegram's internal search too")
         elif self.sources.get("telegram"):
             self.note("Telegram account not connected: running with open-web sources only")
+        if self.languages:
+            self._push(0, ("translate",))
+
+    def _seed_terms(self, terms: list[str], strong: bool, base: float = 1.0):
+        """Queue every source for these terms. Weak (learned) terms get the cheap sources only."""
+        if self.sources.get("web") or self.sources.get("directories"):
+            jobs = websearch.tasks(terms, self.sources.get("web") and strong, self.sources.get("directories"),
+                                   self.p["pages_scale"] if strong else 0.4)
+            for i, (source, url) in enumerate(jobs):
+                self._push(base + i * 0.2, ("web", source, url))
+        if self.sources.get("guess"):
+            guesses = keywords.username_guesses(terms, self.p["guesses"] if strong else 25)
+            for i, g in enumerate(guesses):
+                self.candidate(g, 0, "guess", prio=base + 2 + i * 0.01)
+        if self.use_tg:
+            for i, q in enumerate(keywords.search_variants(terms) if strong else terms):
+                self._push(base - 1 + i, ("tg_search", q), tg=True)
+            if strong:
+                for i, t in enumerate(terms):
+                    self._push(base - 0.5 + i, ("tg_posts", t), tg=True)
+                    self._push(base - 0.4 + i, ("tg_mine", t), tg=True)
+
+    def add_terms(self, new: list[str], strong: bool, why: str):
+        """Widen a running search (translations are strong, learned related topics weak)."""
+        with self.lock:
+            new = [t for t in new if t and t not in self.terms and t not in self.weak]
+            if not new:
+                return
+            (self.terms if strong else self.weak).extend(new)
+            self.matcher = keywords.Matcher(self.terms, self.weak)
+            live = [e for e in self.ents.values() if e["kind"] not in ("new", "none", "user")]
+        self.note(f"{why}: " + ", ".join(new))
+        for e in live:
+            self._rescore(e)
+        self._seed_terms(new, strong, base=2.0)
+        if strong and self.sources.get("crawl"):
+            for e in live[:400]:  # search the new words inside channels already seen
+                if e["kind"] == "channel" and e.get("has_preview"):
+                    self._push(e["depth"] * 10 + 4, ("crawl", e["ref"]))
+
+    def _t_translate(self):
+        for lang in self.languages:
+            found = []
+            for term in self.query_terms:
+                t = expand.translate(self.fetcher, term, lang)
+                if t:
+                    found.append(t)
+            self.add_terms(found, True, f"Also searching in {expand.LANGUAGES[lang]}")
+
+    def _learn(self):
+        if len(self.weak) >= 6:
+            return
+        with self.lock:
+            live = [e for e in self.ents.values() if e["kind"] in ("channel", "group")]
+            exact = [e.get("title", "") for e in live if e.get("level") == "exact"]
+            other = [e.get("title", "") for e in live if e.get("level") == "none"]
+        new = expand.learn_related(exact, other, self.terms + self.weak, limit=6 - len(self.weak))
+        self.add_terms(new, False, "Related topics found, widening the search")
 
     # ------------------------------------------------------------ candidates
     def candidate(self, ref: str, depth: int, source: str, parent: str | None = None, prio: float | None = None):
@@ -229,14 +283,24 @@ class Job:
                 self._rescore(e)
 
     def _rescore(self, e: dict, save: bool = True):
-        name_hits = set(self.matcher.hits(e.get("title", ""))) | set(self.matcher.username_hits(e["ref"]))
-        desc_hits = set(self.matcher.hits(e.get("description", "")))
+        t_full, t_part = self.matcher.grades(e.get("title", ""))
+        u_full, u_part = self.matcher.username_grades(e["ref"])
+        d_full, d_part = self.matcher.grades(e.get("description", ""))
+        name_full, name_part = set(t_full) | set(u_full), (set(t_part) | set(u_part)) - set(t_full) - set(u_full)
+        desc_full, desc_part = set(d_full), set(d_part) - set(d_full) - name_full
         with self.lock:
             was = e.get("relevant", False)
-            e["matched"] = name_hits | desc_hits | set(e.get("post_terms", ()))
-            e["relevant"] = bool(name_hits or desc_hits or e["post_hits"])
+            linked = len(e["inbound"]) >= 2 or "similar channels" in e["sources"] or "linked chat" in e["sources"]
+            # exact: named/described with the search words; posts: writes about them;
+            # related: word forms / related topics / pointed to by several matching chats.
+            e["level"] = ("exact" if name_full or desc_full else "posts" if e["post_hits"]
+                          else "related" if name_part or len(desc_part) >= 2 or linked else "none")
+            e["core"] = e["level"] in ("exact", "posts")
+            e["matched"] = name_full | desc_full | set(e.get("post_terms", ())) | name_part | desc_part
+            e["relevant"] = e["level"] != "none"
             e["activity"] = activity_of(e)
-            e["score"] = round(10 * len(name_hits) + 5 * len(desc_hits) + min(e["post_hits"], 20)
+            e["score"] = round(10 * len(name_full) + 5 * len(desc_full) + min(e["post_hits"], 20)
+                               + 3 * len(name_part) + 1.5 * len(desc_part)
                                + 0.5 * min(len(e["inbound"]), 10) + 0.5 * (len(e["sources"]) - 1)
                                + {"active": 2, "inactive": -3, "dead": -100}.get(e["activity"], 0), 1)
             if e["relevant"] and not was:
@@ -290,20 +354,19 @@ class Job:
             return
         e["is_new"], e["first_seen"] = self.store.known_put(self.id, e)
         self._rescore(e)
-        expand = e["relevant"] and e["depth"] < self.p["depth"]
-        if expand:
+        if e["core"] and e["depth"] < self.p["depth"]:
             for r in info["refs"]:
                 self.candidate(r, e["depth"] + 1, "description", ref)
         if not self.sources.get("crawl") or ref.startswith("+"):
             return
         if info["kind"] == "channel" and info.get("has_preview"):
             # Relevant channels get read; others are first searched for the keywords.
-            if e["relevant"] or e["depth"] <= self.p["depth"]:
-                self._push(e["depth"] * 10 + (2 if e["relevant"] else 7), ("crawl", ref))
+            if e["core"] or e["depth"] <= self.p["depth"]:
+                self._push(e["depth"] * 10 + (2 if e["core"] else 7), ("crawl", ref))
         if self.use_tg and info["kind"] in ("channel", "group") and e["depth"] <= self.p["depth"]:
             if info["kind"] == "group" or not info.get("has_preview"):
                 self._push(e["depth"] * 10 + 5, ("tg_inside", ref), tg=True)
-            if e["relevant"]:
+            if e["core"]:
                 self._push(e["depth"] * 10 + 3, ("tg_related", ref), tg=True)
 
     def _record_posts(self, e: dict, posts: list[dict], term: str | None, follow: bool):
@@ -332,7 +395,7 @@ class Job:
     def _t_crawl(self, ref: str):
         e = self.ents[ref]
         can_follow = e["depth"] < self.p["depth"]
-        was_relevant = e.get("relevant", False)
+        was_relevant = e.get("core", False)
         first, before = [], None
         if not e.get("peeked"):
             # Newest posts: tells whether the channel is alive, and what it talks about.
@@ -346,7 +409,7 @@ class Job:
                     e["last_post"] = max(dates)
                 self._record_posts(e, first, None, follow=False)
                 self._rescore(e)
-        for term in (self.terms[:8] if e["relevant"] else self.terms[:3]):
+        for term in (self.terms[:10] if e["core"] else self.terms[:4]):
             if term in e["searched"] or self.stop_flag:
                 continue
             e["searched"].add(term)
@@ -356,7 +419,7 @@ class Job:
             self._record_posts(e, tme.parse_posts(body)["posts"], term, follow=False)
         self._rescore(e)
         self.store.known_put(self.id, e)
-        if not e["relevant"] or e["crawled"]:
+        if not e["core"] or e["crawled"]:
             return
         if not was_relevant and self.use_tg:
             self._push(e["depth"] * 10 + 3, ("tg_related", ref), tg=True)
@@ -430,7 +493,7 @@ class Job:
         if not self._tg_ok():
             return
         e = self.ents[ref]
-        was = e.get("relevant", False)
+        was = e.get("core", False)
         for term in (self.terms[:5] if was else self.terms[:2]):
             if term in e["searched"]:
                 continue
@@ -440,5 +503,5 @@ class Job:
             e["last_post"] = self.tg.last_date(ref) or None
         self._rescore(e)
         self.store.known_put(self.id, e)
-        if e["relevant"] and not was:
+        if e["core"] and not was:
             self._push(e["depth"] * 10 + 3, ("tg_related", ref), tg=True)

@@ -96,7 +96,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/jobs" and method == "POST":
             b = self._body()
             allowed = ("query", "extra", "seeds", "preset", "kinds", "sources", "workers",
-                       "depth", "history_pages", "minutes", "max_entities")
+                       "depth", "history_pages", "minutes", "max_entities", "languages")
             job = Job(app.store, app.tg, **{k: b[k] for k in allowed if k in b})
             app.jobs[job.id] = job
             job.start()
@@ -123,7 +123,8 @@ class Handler(BaseHTTPRequestHandler):
                 kinds=[k for k in q.get("kinds", "").split(",") if k] or None,
                 relevant_only=q.get("all") != "1", text=q.get("q", ""),
                 min_members=int(q.get("min_members") or 0), sort=q.get("sort", "score"),
-                new_only=q.get("new") == "1", active_only=q.get("active") == "1")
+                new_only=q.get("new") == "1", active_only=q.get("active") == "1",
+                exact_only=q.get("exact") == "1")
             if action == "results":
                 total, rows = app.store.entities(jid, limit=min(int(q.get("limit") or 200), 1000),
                                                  offset=int(q.get("offset") or 0), **flt)
@@ -142,7 +143,7 @@ class Handler(BaseHTTPRequestHandler):
                     cols = ["url", "channel", "date", "views", "matched", "text"]
                 else:
                     _, rows = app.store.entities(jid, limit=1_000_000, **flt)
-                    cols = ["url", "ref", "kind", "title", "members", "activity", "last_post", "online", "is_new", "score", "relevant", "post_hits",
+                    cols = ["url", "ref", "kind", "title", "members", "level", "activity", "last_post", "online", "is_new", "score", "relevant", "post_hits",
                             "inbound", "depth", "matched", "sources", "description"]
                 name = f"telegram-{what}-{jid}.{ext or 'csv'}"
                 head = {"Content-Disposition": f'attachment; filename="{name}"'}

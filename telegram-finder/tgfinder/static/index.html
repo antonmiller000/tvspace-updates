@@ -78,6 +78,8 @@ textarea{min-height:60px;resize:vertical}
 .badge{font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:6px;text-transform:uppercase;white-space:nowrap}
 .b-new{background:var(--acc);color:var(--acc-ink)}
 .b-kind{background:var(--offbg);color:var(--mute)}
+.b-rel{background:var(--warnbg);color:var(--warn)}
+.also{margin:6px 4px 0;font-size:13px;color:var(--mute)}
 .meta{color:var(--mute);font-size:13px;margin-top:1px;display:flex;gap:4px 10px;flex-wrap:wrap;align-items:center}
 .act{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:999px}
 .act i{width:7px;height:7px;border-radius:50%;background:currentColor}
@@ -156,6 +158,14 @@ dialog::backdrop{background:rgba(8,14,22,.5)}
         <div><label for="history_pages">History pages per channel</label><input class="field" type="number" id="history_pages" min="1" max="200"></div>
         <div><label for="max_entities">Max chats to check</label><input class="field" type="number" id="max_entities" min="50"></div>
       </div>
+      <label>Also search in these languages (your words are translated automatically)</label>
+      <div class="group" id="langs">
+        <button class="chip on" data-v="en">English</button><button class="chip on" data-v="ru">Russian</button>
+        <button class="chip" data-v="uk">Ukrainian</button><button class="chip" data-v="de">German</button>
+        <button class="chip" data-v="es">Spanish</button><button class="chip" data-v="fr">French</button>
+        <button class="chip" data-v="tr">Turkish</button><button class="chip" data-v="fa">Persian</button>
+        <button class="chip" data-v="ar">Arabic</button><button class="chip" data-v="uz">Uzbek</button>
+      </div>
       <label>Sources</label>
       <div class="group" id="sources">
         <button class="chip on" data-v="web">Web search</button>
@@ -170,11 +180,13 @@ dialog::backdrop{background:rgba(8,14,22,.5)}
 
   <div id="results" hidden>
     <div class="status" id="status"></div>
+    <div class="also" id="also" hidden></div>
     <div class="log" id="log" hidden></div>
     <div class="tools">
       <div class="tabs" id="tabs"><button data-v="chats" class="on">Chats</button><button data-v="posts">Posts</button></div>
       <div class="group" id="quick">
         <button class="chip on" data-v="">All <span id="c-all"></span></button>
+        <button class="chip" data-v="exact" title="Only chats that match your words directly">Exact <span id="c-exact"></span></button>
         <button class="chip" data-v="new">New <span id="c-new"></span></button>
         <button class="chip" data-v="active">Active <span id="c-active"></span></button>
       </div>
@@ -192,7 +204,7 @@ dialog::backdrop{background:rgba(8,14,22,.5)}
 
   <div class="empty" id="welcome">
     <h3>Find Telegram chats on any topic</h3>
-    Type a topic and press Search. Results appear as they are found — each one is checked live<br>and marked <b>New</b> or already seen, <b>Active</b> or inactive.
+    Type a topic and press Search. Results appear as they are found — each one is checked live<br>and marked <b>New</b> or already seen, <b>Active</b> or inactive. Related chats, other word forms and translations are included too.
   </div>
 </div>
 
@@ -224,7 +236,7 @@ const picked=sel=>$$(sel+' .chip.on').map(b=>b.dataset.v);
 
 async function init(){
   presets=await api('/api/presets');
-  chips('#kinds',true);chips('#preset');chips('#sources',true);chips('#quick');
+  chips('#kinds',true);chips('#preset');chips('#sources',true);chips('#langs',true);chips('#quick');
   $('#preset').addEventListener('pick',applyPreset);applyPreset();
   $('#quick').addEventListener('pick',()=>{quick=picked('#quick')[0];limit=100;load(true)});
   $('#bmore').onclick=()=>{$('#more').hidden=!$('#more').hidden};
@@ -249,7 +261,7 @@ function showErr(m){$('#err').textContent=m||'';$('#err').hidden=!m}
 async function start(){
   showErr('');const q=$('#query').value.trim();if(!q){$('#query').focus();return}
   const sources={};$$('#sources .chip').forEach(b=>sources[b.dataset.v]=b.classList.contains('on'));
-  const body={query:q,extra:$('#extra').value,seeds:$('#seeds').value,preset:picked('#preset')[0],kinds:picked('#kinds'),sources};
+  const body={query:q,extra:$('#extra').value,seeds:$('#seeds').value,preset:picked('#preset')[0],kinds:picked('#kinds'),sources,languages:picked('#langs')};
   for(const k of ['depth','minutes','history_pages','max_entities'])body[k]=$('#'+k).value;
   try{
     if(job&&job.status==='running')await api(`/api/jobs/${cur}/stop`,{body:{}});
@@ -275,6 +287,8 @@ async function poll(){
   $('#blog').onclick=()=>{$('#log').hidden=!$('#log').hidden};
   $('#log').textContent=j.log?j.log.map(l=>new Date(l.t*1000).toLocaleTimeString()+'  '+l.msg).join('\n')
     :'Links found per source: '+(Object.entries(s.sources||{}).map(([k,v])=>`${k} ${v}`).join(', ')||'—');
+  const extra=[...(s.terms||[]).filter(t=>!(j.params.terms||[]).includes(t)),...(s.related_terms||[])];
+  $('#also').hidden=!extra.length;$('#also').textContent='Also searching: '+extra.join(' · ');
   if(!run)clearInterval(timer);
   load(false);
 }
@@ -283,7 +297,7 @@ function params(){
   if(tab==='chats'){
     const k=((job?.params?.kinds)||['channel','group']).filter(x=>x!=='posts');
     p.set('kinds',(k.length?k:['channel','group']).join(','));p.set('sort',$('#fsort').value);
-    if(quick==='new')p.set('new','1');if(quick==='active')p.set('active','1');
+    if(quick==='new')p.set('new','1');if(quick==='exact')p.set('exact','1');if(quick==='active')p.set('active','1');
   }
   p.set('limit',limit);return p;
 }
@@ -305,10 +319,10 @@ function chatRow(e,running){
   return `<a class="item ${e.kind==='dead'?'dead':''}" href="${esc(e.url)}" target="_blank" rel="noopener">
     <div class="av" style="background:hsl(${hue(e.ref)} 55% 52%)">${esc([...name.trim()][0]||'?').toUpperCase()}${e.photo?`<img src="${esc(e.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</div>
     <div class="main">
-      <div class="t"><b>${esc(name)}</b>${e.verified?'<span title="Verified">✓</span>':''}${e.is_new?'<span class="badge b-new">New</span>':''}<span class="badge b-kind">${esc(e.kind==='dead'?'gone':e.kind)}</span></div>
+      <div class="t"><b>${esc(name)}</b>${e.verified?'<span title="Verified">✓</span>':''}${e.is_new?'<span class="badge b-new">New</span>':''}<span class="badge b-kind">${esc(e.kind==='dead'?'gone':e.kind)}</span>${e.level==='related'?'<span class="badge b-rel">Related</span>':''}</div>
       <div class="meta">${activity(e,running)}<span>${priv?'private invite link':'@'+esc(e.ref)}</span>${!e.is_new&&e.first_seen?`<span>seen before · ${new Date(e.first_seen*1000).toLocaleDateString('en',{day:'numeric',month:'short'})}</span>`:''}</div>
       ${e.description?`<div class="desc">${esc(e.description.slice(0,300))}</div>`:''}
-      <div class="tags">${e.matched.map(m=>`<span class="tag">${esc(m)}</span>`).join('')}${e.post_hits?`<span class="tag">${e.post_hits} matching posts</span>`:''}${e.sources.map(m=>`<span class="tag src">${esc(m)}</span>`).join('')}</div>
+      <div class="tags">${e.matched.map(m=>`<span class="tag">${esc(m)}</span>`).join('')}${e.post_hits?`<span class="tag">${e.post_hits} matching posts</span>`:''}${e.level==='related'&&e.inbound>=2?`<span class="tag">linked by ${e.inbound} matching chats</span>`:''}${e.sources.map(m=>`<span class="tag src">${esc(m)}</span>`).join('')}</div>
     </div>
     <div class="side">${e.members!=null?`<b>${short(e.members)}</b><span>${e.kind==='group'?'members':'subscribers'}</span>`:''}</div></a>`;
 }
@@ -323,7 +337,7 @@ async function load(force){
   if(!cur)return;const my=++seq,running=job?.status==='running';
   let r;try{r=await api(`/api/jobs/${cur}/${tab==='chats'?'results':'posts'}?`+params())}catch(e){return}
   if(my!==seq)return;
-  if(r.counts){$('#c-all').textContent=fmt(r.counts.all);$('#c-new').textContent=fmt(r.counts.new);$('#c-active').textContent=fmt(r.counts.active)}
+  if(r.counts){$('#c-all').textContent=fmt(r.counts.all);$('#c-new').textContent=fmt(r.counts.new);$('#c-exact').textContent=fmt(r.counts.exact);$('#c-active').textContent=fmt(r.counts.active)}
   const sig=tab+running+JSON.stringify(r.rows);
   if(sig===lastSig&&!force)return;lastSig=sig;
   $('#list').innerHTML=r.rows.length?r.rows.map(x=>tab==='chats'?chatRow(x,running):postRow(x)).join('')
