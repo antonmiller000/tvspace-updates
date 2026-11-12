@@ -109,6 +109,12 @@ dialog::backdrop{background:rgba(8,14,22,.5)}
 .hrow:last-child{border:0}
 .hrow a{font-weight:600}
 .ok{color:var(--ok)}
+.note{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:14px;margin:8px 0}
+.note.bad{background:var(--badbg);color:var(--bad)}
+.sep{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:13px;margin:18px 0 4px}
+.sep:before,.sep:after{content:"";flex:1;height:1px;background:var(--line)}
+.qr{background:#fff;border-radius:12px;padding:6px;display:inline-block;line-height:0}
+.qr svg{width:210px;height:210px}
 @media (max-width:560px){.go{padding:12px 16px}#query{font-size:16px}.side{display:none}.av{width:40px;height:40px}#ftext{width:110px}}
 </style>
 </head>
@@ -224,7 +230,7 @@ async function api(path,opt={}){
   const r=await fetch(path,opt),j=await r.json().catch(()=>({error:'Bad response'}));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
 }
-let presets={},cur=null,job=null,tab='chats',quick='',limit=100,timer=null,lastSig='',seq=0;
+let qrTimer=null,presets={},cur=null,job=null,tab='chats',quick='',limit=100,timer=null,lastSig='',seq=0;
 
 function chips(sel,multi){
   $$(sel+' .chip').forEach(b=>b.onclick=()=>{
@@ -355,6 +361,7 @@ async function loadHist(){
     else{b.dataset.sure=1;b.textContent='Really delete?'}});
 }
 async function loadTg(msg){
+  if(!$('#tgbox').innerHTML)$('#tgbox').innerHTML='<p class="hint"><span class="spin" style="display:inline-block;vertical-align:-2px"></span> Checking the connection to Telegram…</p>';
   let s;try{s=await api('/api/tg/status')}catch(e){s={error:e.message}}
   const box=$('#tgbox'),note=m=>m?`<p class="err" style="padding-left:0">${esc(m)}</p>`:'',err=note(msg||s.error);
   $('#tgdot').classList.toggle('on',!!s.authorized);$('#tglabel').textContent=s.authorized?'Connected':'Account';
@@ -370,16 +377,32 @@ async function loadTg(msg){
       <p><button class="btn pri" id="tgsave">Save</button></p>`+err;
     $('#tgsave').onclick=()=>tg('/api/tg/config',{api_id:$('#tgid').value.trim(),api_hash:$('#tghash').value.trim()});return;
   }
-  box.innerHTML=intro+`<label>Phone number (international format)</label><input class="field" id="tgphone" placeholder="+123456789" inputmode="tel">
-    <p><button class="btn" id="tgsend">Send code</button> <span class="hint" id="tgmsg"></span></p>
-    <label>Code from your Telegram app</label><input class="field" id="tgcode" inputmode="numeric">
+  box.innerHTML=intro+`<label>Phone number (international format, with country code)</label><input class="field" id="tgphone" placeholder="+49 151 2345678" inputmode="tel">
+    <p><button class="btn pri" id="tgsend">Send code</button> <button class="btn" id="tgsms" hidden>Send again another way</button></p>
+    <p class="note" id="tgmsg" hidden></p>
+    <label>Login code</label><input class="field" id="tgcode" inputmode="numeric" autocomplete="one-time-code">
     <label>Two-step password (only if you set one)</label><input class="field" type="password" id="tgpw">
-    <p><button class="btn pri" id="tglogin">Log in</button> <button class="btn" id="tgreset">Change API keys</button></p>`+err;
-  const m=t=>$('#tgmsg').textContent=t;
-  $('#tgsend').onclick=async()=>{m('Sending…');try{await api('/api/tg/send_code',{body:{phone:$('#tgphone').value}});m('Code sent — check your Telegram app.')}catch(e){m(e.message)}};
-  $('#tglogin').onclick=async()=>{try{let r=await api('/api/tg/sign_in',{body:{code:$('#tgcode').value}});
-      if(r.result==='password'){if(!$('#tgpw').value){m('This account has a two-step password — enter it and press Log in again.');return}
-        r=await api('/api/tg/sign_in',{body:{password:$('#tgpw').value}})}loadTg()}catch(e){m(e.message)}};
+    <p><button class="btn pri" id="tglogin">Log in</button> <button class="btn" id="tgreset">Change API keys</button></p>
+    ${s.qr_available?`<div class="sep">or without a code</div>
+    <p class="hint">Show a QR code here and scan it with Telegram on a phone that is already logged in: Telegram → Settings → Devices → Link Desktop Device. (You need a second screen for this — it cannot be scanned from the same phone.)</p>
+    <p><button class="btn" id="tgqr">Show QR code</button></p><div id="qrbox"></div>`:''}`+err;
+  const m=(t,bad)=>{const el=$('#tgmsg');el.hidden=!t;el.textContent=t;el.classList.toggle('bad',!!bad)};
+  const send=async sms=>{m('Contacting Telegram…');try{const r=await api('/api/tg/send_code',{body:{phone:$('#tgphone').value,sms}});
+      m(r.text+' ('+r.phone+')');$('#tgsms').hidden=!r.can_resend;if(r.next)$('#tgsms').textContent='Not received? Send by '+r.next;$('#tgcode').focus()}catch(e){m(e.message,true)}};
+  $('#tgsend').onclick=()=>send(false);$('#tgsms').onclick=()=>send(true);
+  const pw=async()=>{if(!$('#tgpw').value){m('This account has a two-step password — enter it above and press Log in.',true);$('#tgpw').focus();return}
+      await api('/api/tg/sign_in',{body:{password:$('#tgpw').value}});loadTg()};
+  let needPw=false;
+  $('#tglogin').onclick=async()=>{try{if(needPw)return await pw();const r=await api('/api/tg/sign_in',{body:{code:$('#tgcode').value}});
+      if(r.result==='password'){needPw=true;await pw()}else loadTg()}catch(e){m(e.message,true)}};
+  if($('#tgqr'))$('#tgqr').onclick=async()=>{try{await api('/api/tg/qr',{body:{}});clearInterval(qrTimer);qrTimer=setInterval(async()=>{
+      if(!$('#dtg').open||!$('#qrbox')){clearInterval(qrTimer);return}
+      const q=await api('/api/tg/qr');
+      if(q.state==='waiting')$('#qrbox').innerHTML='<div class="qr">'+q.svg+'</div><p class="hint">Waiting for you to scan and confirm…</p>';
+      else if(q.state==='done'){clearInterval(qrTimer);loadTg()}
+      else if(q.state==='password'){clearInterval(qrTimer);needPw=true;$('#qrbox').innerHTML='';m('Scanned. This account has a two-step password — enter it above and press Log in.');$('#tgpw').focus()}
+      else{clearInterval(qrTimer);$('#qrbox').innerHTML='<p class="err" style="padding-left:0">'+esc(q.error||'The QR code expired. Press “Show QR code” again.')+'</p>'}
+    },1500)}catch(e){m(e.message,true)}};
   $('#tgreset').onclick=()=>tg('/api/tg/config',{api_id:0,api_hash:''});
 }
 async function tg(path,body){try{await api(path,{body});loadTg()}catch(e){loadTg(e.message)}}

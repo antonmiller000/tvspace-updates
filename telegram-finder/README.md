@@ -64,13 +64,18 @@ A search can be stopped at any time; what was found so far is kept.
 ## Connecting a Telegram account (optional)
 
 ```
-pip install telethon
+pip install telethon segno
 ```
 
 Restart the app, then in the **Telegram account** box: paste the `api_id` /
 `api_hash` you get for free at https://my.telegram.org/apps, enter your phone
 number and the login code. Keys and the session are stored only in `data/` on
 this computer — keep that folder private (it is git-ignored).
+
+The login code normally arrives as a chat message from "Telegram" inside your
+Telegram app, not by SMS; the app tells you where Telegram sent it and offers a
+resend by SMS when Telegram allows it. Alternatively use **Show QR code** and scan
+it from a phone that is already logged in (Settings → Devices → Link Desktop Device).
 
 ## What it cannot do
 

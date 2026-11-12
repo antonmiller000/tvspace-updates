@@ -158,12 +158,16 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/tg/status":
             return self._send(200, app.tg.status())
+        if path == "/api/tg/qr" and method == "GET":
+            return self._send(200, app.tg.qr_view())
         if method == "POST" and path.startswith("/api/tg/"):
             b = self._body()
             if path == "/api/tg/config":
                 app.tg.save_config(int(b["api_id"]), str(b["api_hash"]))
             elif path == "/api/tg/send_code":
-                app.tg.send_code(str(b["phone"]).strip())
+                return self._send(200, app.tg.send_code(str(b["phone"]), bool(b.get("sms"))))
+            elif path == "/api/tg/qr":
+                return self._send(200, app.tg.qr_start())
             elif path == "/api/tg/sign_in":
                 return self._send(200, {"result": app.tg.sign_in(str(b.get("code", "")).strip(), b.get("password", ""))})
             elif path == "/api/tg/logout":

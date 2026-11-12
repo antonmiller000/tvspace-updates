@@ -13,8 +13,8 @@ android {
         applicationId = "app.tgfinder"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
     signingConfigs {
@@ -40,6 +40,6 @@ android {
 chaquopy {
     defaultConfig {
         version = "3.11"
-        pip { install("telethon") }
+        pip { install("telethon"); install("segno") }
     }
 }
