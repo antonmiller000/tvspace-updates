@@ -6,6 +6,14 @@ want, choose what to look for (channels / groups / posts with the text / bots),
 choose how thorough to be, and let it run. Results are saved, filterable and
 exportable to CSV / JSON.
 
+Results appear within a second or two and keep filling in while the search runs.
+Every chat is checked live and marked:
+
+- **New** — first time any of your searches has found it; otherwise "seen before".
+  Chats found earlier are remembered, so a repeat search shows them instantly.
+- **Active / Quiet / Inactive / Gone** — from the date of the newest post (channels),
+  people online (groups), or a link that no longer works. Dead links are dropped.
+
 ## Start
 
 ```

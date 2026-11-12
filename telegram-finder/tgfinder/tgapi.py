@@ -229,6 +229,13 @@ class Tg:
                      "text": m.message or ""} for m in msgs if m.message]
         return self._call(go)
 
+    def last_date(self, username: str) -> str:
+        """Date of the newest message in a public chat ('' if none)."""
+        async def go():
+            msgs = await self.client.get_messages(username, limit=1)
+            return msgs[0].date.isoformat() if msgs and msgs[0].date else ""
+        return self._call(go)
+
     @staticmethod
     def _posts(messages, chats: dict) -> list[dict]:
         out = []

@@ -5,254 +5,367 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Telegram Finder</title>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--ink:#17212b;--mute:#6b7785;--line:#dde3ea;--acc:#2481cc;--acc-ink:#fff;--ok:#1f9d55;--warn:#b7791f;--chip:#e8f1fa}
-@media (prefers-color-scheme:dark){:root{--bg:#0e1621;--card:#17212b;--ink:#e8edf2;--mute:#8696a7;--line:#263443;--acc:#5aa9e6;--acc-ink:#0e1621;--ok:#4fd18b;--warn:#e0b25a;--chip:#22303f}}
+:root{--bg:#f3f5f8;--card:#fff;--ink:#141c26;--mute:#6a7686;--line:#e1e6ed;--acc:#2a8bdb;--acc2:#1f74bd;--acc-ink:#fff;--soft:#eaf3fc;
+--ok:#18a058;--okbg:#e3f6ec;--warn:#b7791f;--warnbg:#fbf1dc;--off:#7d8794;--offbg:#eceff3;--bad:#d14343;--badbg:#fbe6e6;--shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.05)}
+@media (prefers-color-scheme:dark){:root{--bg:#0d141c;--card:#151e29;--ink:#e9eef4;--mute:#8b98a8;--line:#243140;--acc:#4ea4ec;--acc2:#6bb4f0;--acc-ink:#08131d;--soft:#182839;
+--ok:#4fd18b;--okbg:#133224;--warn:#e3b55c;--warnbg:#3a2e14;--off:#8b98a8;--offbg:#212c39;--bad:#f07878;--badbg:#3b1c1c;--shadow:none}}
 *{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:1180px;margin:0 auto;padding:16px}
-h1{font-size:22px;margin:4px 0 2px}
-.sub{color:var(--mute);margin:0 0 14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
-label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
-input[type=text],input[type=number],input[type=password],textarea,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
-textarea{min-height:64px;resize:vertical}
-#query{font-size:17px;padding:12px}
-.row{display:flex;gap:12px;flex-wrap:wrap}
-.row>*{flex:1 1 180px;min-width:0}
-.checks{display:flex;gap:6px 16px;flex-wrap:wrap}
-.checks label{display:flex;align-items:center;gap:6px;font-weight:400;font-size:14px;margin:4px 0}
-button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer}
-button.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
-button.danger{color:#d64545}
-button:disabled{opacity:.5;cursor:default}
-details summary{cursor:pointer;color:var(--acc);margin-top:10px;font-size:14px}
-.hint{color:var(--mute);font-size:13px;margin:4px 0 0}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:10px 0}
-.stat{background:var(--bg);border-radius:8px;padding:8px 10px}
-.stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
-.stat span{color:var(--mute);font-size:12px}
-.badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;background:var(--chip)}
-.badge.running{background:var(--acc);color:var(--acc-ink)}
-.log{font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--mute);max-height:140px;overflow:auto;background:var(--bg);border-radius:8px;padding:8px;white-space:pre-wrap}
-.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.tabs button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
-.tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:12px;color:var(--mute);white-space:nowrap;cursor:pointer;user-select:none}
-td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-td .desc{color:var(--mute);font-size:13px;max-width:520px;overflow-wrap:anywhere}
-a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
-.kind{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
-.chip{display:inline-block;background:var(--chip);border-radius:6px;padding:0 6px;font-size:11px;margin:1px 2px 1px 0}
-.jobs div.j{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);align-items:center}
-.jobs div.j:last-child{border:0}
-.err{color:#d64545;font-size:13px;margin-top:6px}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--acc);text-decoration:none}
+.wrap{max-width:920px;margin:0 auto;padding:0 16px 60px}
+
+/* top */
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 0 10px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:-.01em}
+.brand svg{width:30px;height:30px}
+.topbtns{display:flex;gap:6px}
+.ghost{border:0;background:none;padding:8px 12px;border-radius:10px;color:var(--mute);cursor:pointer;display:flex;gap:6px;align-items:center}
+.ghost:hover,.ghost:focus-visible{background:var(--soft);color:var(--acc)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--off);display:inline-block}
+.dot.on{background:var(--ok)}
+
+/* search */
+.searchbox{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:10px}
+.bar{display:flex;gap:8px;align-items:center}
+.bar .inp{flex:1;display:flex;align-items:center;gap:10px;padding:0 12px;min-width:0}
+.bar svg{width:20px;height:20px;color:var(--mute);flex:none}
+#query{flex:1;min-width:0;border:0;outline:0;background:none;font-size:18px;padding:12px 0}
+.go{border:0;background:var(--acc);color:var(--acc-ink);font-weight:650;padding:12px 22px;border-radius:12px;cursor:pointer;white-space:nowrap}
+.go:hover,.go:focus-visible{background:var(--acc2)}
+.go.stop{background:var(--badbg);color:var(--bad)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:8px 6px 2px}
+.group{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.group>span{color:var(--mute);font-size:13px;margin-right:2px}
+.chip{border:1px solid var(--line);background:none;border-radius:999px;padding:6px 12px;font-size:13.5px;cursor:pointer;user-select:none;white-space:nowrap}
+.chip:hover{border-color:var(--acc)}
+.chip:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.chip.on{background:var(--soft);border-color:var(--acc);color:var(--acc);font-weight:600}
+.link{border:0;background:none;color:var(--acc);cursor:pointer;padding:6px 4px;font-size:13.5px}
+#more{padding:6px 6px 4px;border-top:1px solid var(--line);margin-top:10px}
+label{display:block;font-weight:600;font-size:13px;margin:12px 0 5px}
+.field,textarea,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+textarea{min-height:60px;resize:vertical}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 12px}
+.hint{color:var(--mute);font-size:13px}
+.err{color:var(--bad);font-size:13.5px;padding:6px 8px}
+
+/* status */
+.status{display:flex;align-items:center;gap:10px;margin:14px 4px 0;color:var(--mute);font-size:13.5px;flex-wrap:wrap}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.status b{color:var(--ink);font-weight:600}
+.log{font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--mute);max-height:150px;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;white-space:pre-wrap;margin-top:8px}
+
+/* results */
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 10px}
+.tabs{display:flex;background:var(--offbg);border-radius:12px;padding:3px}
+.tabs button{border:0;background:none;padding:7px 14px;border-radius:9px;cursor:pointer;color:var(--mute);font-weight:600;font-size:14px}
+.tabs button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.tools .sp{flex:1}
+.tools select,.tools .field{width:auto;padding:7px 10px;font-size:13.5px;background:var(--card)}
+#ftext{width:150px}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:inherit;box-shadow:var(--shadow);transition:border-color .12s}
+.item:hover,.item:focus-visible{border-color:var(--acc);outline:0}
+.item.dead{opacity:.6}
+.av{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px;overflow:hidden;position:relative}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.main{flex:1;min-width:0}
+.t{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.t b{font-size:15.5px;overflow-wrap:anywhere}
+.badge{font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:6px;text-transform:uppercase;white-space:nowrap}
+.b-new{background:var(--acc);color:var(--acc-ink)}
+.b-kind{background:var(--offbg);color:var(--mute)}
+.meta{color:var(--mute);font-size:13px;margin-top:1px;display:flex;gap:4px 10px;flex-wrap:wrap;align-items:center}
+.act{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:999px}
+.act i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.a-active{color:var(--ok);background:var(--okbg)}.a-quiet{color:var(--warn);background:var(--warnbg)}
+.a-inactive,.a-unknown{color:var(--off);background:var(--offbg)}.a-dead{color:var(--bad);background:var(--badbg)}
+.desc{color:var(--mute);font-size:13.5px;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.post .desc{-webkit-line-clamp:5;color:var(--ink)}
+.tags{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:11.5px;background:var(--soft);color:var(--acc);border-radius:6px;padding:1px 7px}
+.tag.src{background:var(--offbg);color:var(--mute)}
+.side{flex:none;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.side b{display:block;font-size:15px}
+.side span{font-size:12px;color:var(--mute)}
+.empty{text-align:center;color:var(--mute);padding:46px 10px}
+.empty h3{color:var(--ink);margin:0 0 6px;font-size:17px}
+.morebtn{display:block;margin:12px auto 0}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);padding:0;width:min(560px,calc(100vw - 24px));max-height:86vh}
+dialog::backdrop{background:rgba(8,14,22,.5)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;position:sticky;top:0;background:var(--card)}
+.db{padding:14px 18px 18px}
+.btn{border:1px solid var(--line);background:var(--card);padding:8px 14px;border-radius:10px;cursor:pointer}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.btn.danger{color:var(--bad)}
+.hrow{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.hrow:last-child{border:0}
+.hrow a{font-weight:600}
 .ok{color:var(--ok)}
-.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.filters>*,.filters select,.filters input{flex:0 1 auto;width:auto}
-.filters input[type=text]{width:200px}
+@media (max-width:560px){.go{padding:12px 16px}#query{font-size:16px}.side{display:none}.av{width:40px;height:40px}#ftext{width:110px}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Telegram Finder</h1>
-  <p class="sub">Deep discovery of Telegram channels, groups and posts &mdash; including ones Telegram's own search does not show.</p>
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#2a8bdb"/><circle cx="21" cy="21" r="8" fill="none" stroke="#fff" stroke-width="3.5"/><path d="M27 27l8 8" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>
+      Telegram Finder
+    </div>
+    <div class="topbtns">
+      <button class="ghost" id="bhist">History</button>
+      <button class="ghost" id="btg"><span class="dot" id="tgdot"></span><span id="tglabel">Account</span></button>
+    </div>
+  </div>
 
-  <div class="card">
-    <label for="query">What are you looking for?</label>
-    <input type="text" id="query" placeholder="e.g. electric cars, новости Киева, crypto signals" autofocus>
-    <p class="hint">Separate different topics with commas. A chat matches a topic when all of its words appear.</p>
-    <label>Find</label>
-    <div class="checks" id="kinds">
-      <label><input type="checkbox" value="channel" checked> Channels</label>
-      <label><input type="checkbox" value="group" checked> Groups / chats</label>
-      <label><input type="checkbox" value="posts" checked> Posts containing the text</label>
-      <label><input type="checkbox" value="bot"> Bots</label>
+  <div class="searchbox">
+    <div class="bar">
+      <div class="inp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="query" placeholder="Search channels, groups, posts…" autocomplete="off" enterkeyhint="search" autofocus>
+      </div>
+      <button class="go" id="go">Search</button>
     </div>
-    <label>How thorough</label>
-    <div class="checks" id="preset">
-      <label><input type="radio" name="preset" value="quick"> Quick (~10 min)</label>
-      <label><input type="radio" name="preset" value="deep" checked> Deep (up to 1.5 h)</label>
-      <label><input type="radio" name="preset" value="exhaustive"> Exhaustive (up to 12 h)</label>
+    <div class="opts">
+      <div class="group" id="kinds"><span>Find</span>
+        <button class="chip on" data-v="channel">Channels</button>
+        <button class="chip on" data-v="group">Groups</button>
+        <button class="chip on" data-v="posts">Posts</button>
+        <button class="chip" data-v="bot">Bots</button>
+      </div>
+      <div class="group" id="preset"><span>Depth</span>
+        <button class="chip" data-v="quick" title="about 10 minutes">Quick</button>
+        <button class="chip on" data-v="deep" title="up to 1.5 hours">Deep</button>
+        <button class="chip" data-v="exhaustive" title="up to 12 hours">Exhaustive</button>
+      </div>
+      <button class="link" id="bmore">More options</button>
     </div>
-    <details>
-      <summary>More options</summary>
+    <div id="more" hidden>
       <label for="extra">Extra keywords, synonyms, other languages (one per line)</label>
-      <textarea id="extra" placeholder="EV&#10;электромобили&#10;tesla owners"></textarea>
-      <label for="seeds">Chats you already know (links or @usernames) &mdash; used as starting points</label>
+      <textarea id="extra" placeholder="EV&#10;электромобили"></textarea>
+      <label for="seeds">Chats you already know — used as starting points</label>
       <textarea id="seeds" placeholder="@example_channel https://t.me/another"></textarea>
-      <div class="row">
-        <div><label for="depth">Link-following depth</label><input type="number" id="depth" min="0" max="8"></div>
-        <div><label for="minutes">Time limit, minutes</label><input type="number" id="minutes" min="1"></div>
-        <div><label for="history_pages">Post-history pages per channel</label><input type="number" id="history_pages" min="0" max="200"></div>
-        <div><label for="max_entities">Max chats to check</label><input type="number" id="max_entities" min="50"></div>
+      <div class="grid">
+        <div><label for="depth">Link-following depth</label><input class="field" type="number" id="depth" min="0" max="8"></div>
+        <div><label for="minutes">Time limit (minutes)</label><input class="field" type="number" id="minutes" min="1"></div>
+        <div><label for="history_pages">History pages per channel</label><input class="field" type="number" id="history_pages" min="1" max="200"></div>
+        <div><label for="max_entities">Max chats to check</label><input class="field" type="number" id="max_entities" min="50"></div>
       </div>
       <label>Sources</label>
-      <div class="checks" id="sources">
-        <label><input type="checkbox" value="web" checked> Web search engines</label>
-        <label><input type="checkbox" value="directories" checked> Telegram directories</label>
-        <label><input type="checkbox" value="guess" checked> Username guessing</label>
-        <label><input type="checkbox" value="crawl" checked> Follow links inside channels</label>
-        <label><input type="checkbox" value="telegram" checked> My Telegram account (if connected)</label>
+      <div class="group" id="sources">
+        <button class="chip on" data-v="web">Web search</button>
+        <button class="chip on" data-v="directories">Directories</button>
+        <button class="chip on" data-v="guess">Username guessing</button>
+        <button class="chip on" data-v="crawl">Follow links</button>
+        <button class="chip on" data-v="telegram">My Telegram account</button>
       </div>
-    </details>
-    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <button class="primary" id="start">Start search</button>
-      <span id="tgline" class="hint"></span>
     </div>
-    <div class="err" id="starterr"></div>
+    <div class="err" id="err" hidden></div>
   </div>
 
-  <div class="card" id="jobcard" hidden>
-    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-      <div><b id="jtitle"></b> <span class="badge" id="jstatus"></span></div>
-      <div><button id="stop">Stop</button></div>
+  <div id="results" hidden>
+    <div class="status" id="status"></div>
+    <div class="log" id="log" hidden></div>
+    <div class="tools">
+      <div class="tabs" id="tabs"><button data-v="chats" class="on">Chats</button><button data-v="posts">Posts</button></div>
+      <div class="group" id="quick">
+        <button class="chip on" data-v="">All <span id="c-all"></span></button>
+        <button class="chip" data-v="new">New <span id="c-new"></span></button>
+        <button class="chip" data-v="active">Active <span id="c-active"></span></button>
+      </div>
+      <span class="sp"></span>
+      <input class="field" id="ftext" placeholder="Filter…">
+      <select id="fsort">
+        <option value="score">Best match</option><option value="members">Largest</option><option value="recent">Recently active</option>
+        <option value="found">Newest found</option><option value="hits">Most posts</option><option value="title">Name</option>
+      </select>
+      <button class="link" id="bexp">Export</button>
     </div>
-    <div class="stats" id="stats"></div>
-    <details><summary>Activity log</summary><div class="log" id="log"></div></details>
+    <div class="list" id="list"></div>
+    <button class="btn morebtn" id="showmore" hidden>Show more</button>
   </div>
 
-  <div class="card" id="rescard" hidden>
-    <div class="tabs">
-      <button data-tab="chats" class="on">Chats <span id="nchats"></span></button>
-      <button data-tab="posts">Posts <span id="nposts"></span></button>
-    </div>
-    <div class="filters">
-      <input type="text" id="ftext" placeholder="Filter results…">
-      <span id="chatfilters" style="display:contents">
-        <select id="fkind"><option value="">Chosen types</option><option value="channel">Channels</option><option value="group">Groups</option><option value="bot">Bots</option><option value="channel,group,bot">Everything</option></select>
-        <input type="number" id="fmin" placeholder="Min members" style="width:130px">
-        <select id="fsort"><option value="score">Best match</option><option value="members">Largest</option><option value="hits">Most matching posts</option><option value="found">Newest found</option><option value="title">Name</option></select>
-        <label style="display:flex;gap:6px;align-items:center;margin:0;font-weight:400"><input type="checkbox" id="fall"> Include related (no keyword match)</label>
-      </span>
-      <span style="flex:1"></span>
-      <a id="expcsv" href="#">Export CSV</a> <a id="expjson" href="#">JSON</a>
-    </div>
-    <div class="tablewrap"><table id="table"></table></div>
-    <p class="hint" id="more"></p>
-  </div>
-
-  <div class="card">
-    <b>Telegram account (optional, makes the search much deeper)</b>
-    <div id="tgbox" class="hint">Checking…</div>
-  </div>
-
-  <div class="card jobs">
-    <b>Previous searches</b>
-    <div id="jobs" class="hint">None yet</div>
+  <div class="empty" id="welcome">
+    <h3>Find Telegram chats on any topic</h3>
+    Type a topic and press Search. Results appear as they are found — each one is checked live<br>and marked <b>New</b> or already seen, <b>Active</b> or inactive.
   </div>
 </div>
+
+<dialog id="dhist"><div class="dh">Previous searches <button class="ghost" data-close>✕</button></div><div class="db" id="hist"></div></dialog>
+<dialog id="dtg"><div class="dh">Telegram account <button class="ghost" data-close>✕</button></div><div class="db" id="tgbox"></div></dialog>
+<dialog id="dexp"><div class="dh">Export results <button class="ghost" data-close>✕</button></div>
+  <div class="db"><p class="hint" style="margin-top:0">Exports use the current filters.</p>
+  <div class="group"><a class="btn" id="e1">Chats · CSV</a><a class="btn" id="e2">Chats · JSON</a><a class="btn" id="e3">Posts · CSV</a><a class="btn" id="e4">Posts · JSON</a></div></div></dialog>
+
 <script>
-const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>n==null?'':Number(n).toLocaleString('en-US');
+const short=n=>n==null?'':n>=1e6?(n/1e6).toFixed(n>=1e7?0:1)+'M':n>=1e4?Math.round(n/1e3)+'K':n>=1e3?(n/1e3).toFixed(1)+'K':String(n);
 async function api(path,opt={}){
   if(opt.body){opt.method=opt.method||'POST';opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(opt.body)}
-  const r=await fetch(path,opt);const j=await r.json().catch(()=>({error:'Bad response'}));
+  const r=await fetch(path,opt),j=await r.json().catch(()=>({error:'Bad response'}));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
 }
-let presets={},cur=null,tab='chats',timer=null,curJob=null;
+let presets={},cur=null,job=null,tab='chats',quick='',limit=100,timer=null,lastSig='',seq=0;
+
+function chips(sel,multi){
+  $$(sel+' .chip').forEach(b=>b.onclick=()=>{
+    if(multi)b.classList.toggle('on');else $$(sel+' .chip').forEach(x=>x.classList.toggle('on',x===b));
+    b.dispatchEvent(new Event('pick',{bubbles:true}));
+  });
+}
+const picked=sel=>$$(sel+' .chip.on').map(b=>b.dataset.v);
 
 async function init(){
-  presets=await api('/api/presets');applyPreset();
-  $$('#preset input').forEach(i=>i.onchange=applyPreset);
-  $('#start').onclick=start;$('#query').onkeydown=e=>{if(e.key==='Enter')start()};
-  $('#stop').onclick=async()=>{await api(`/api/jobs/${cur}/stop`,{method:'POST',body:{}});poll()};
-  $$('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;$$('.tabs button').forEach(x=>x.classList.toggle('on',x===b));$('#chatfilters').style.display=tab==='chats'?'contents':'none';loadResults()});
-  ['#ftext','#fkind','#fmin','#fsort','#fall'].forEach(s=>$(s).oninput=()=>loadResults());
-  loadJobs();loadTg();
+  presets=await api('/api/presets');
+  chips('#kinds',true);chips('#preset');chips('#sources',true);chips('#quick');
+  $('#preset').addEventListener('pick',applyPreset);applyPreset();
+  $('#quick').addEventListener('pick',()=>{quick=picked('#quick')[0];limit=100;load(true)});
+  $('#bmore').onclick=()=>{$('#more').hidden=!$('#more').hidden};
+  $('#go').onclick=()=>job&&job.status==='running'&&$('#query').value.trim()===job.query?stop():start();
+  $('#query').onkeydown=e=>{if(e.key==='Enter')start()};
+  $$('#tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.v;$$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));$('#quick').style.display=tab==='chats'?'':'none';limit=100;load(true)});
+  $('#ftext').oninput=()=>{limit=100;load(true)};$('#fsort').onchange=()=>load(true);
+  $('#showmore').onclick=()=>{limit+=200;load(true)};
+  $('#bhist').onclick=()=>{loadHist();$('#dhist').showModal()};
+  $('#btg').onclick=()=>{loadTg();$('#dtg').showModal()};
+  $('#bexp').onclick=()=>{const p=params();p.delete('limit');const u=(w,e)=>{p.set('what',w);return `/api/jobs/${cur}/export.${e}?`+p};
+    $('#e1').href=u('chats','csv');$('#e2').href=u('chats','json');$('#e3').href=u('posts','csv');$('#e4').href=u('posts','json');$('#dexp').showModal()};
+  $$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+  $$('dialog').forEach(d=>d.onclick=e=>{if(e.target===d)d.close()});
+  loadTg();
+  const js=await api('/api/jobs');const running=js.find(j=>j.status==='running');
+  if(running)open_(running.id);
 }
-function applyPreset(){const p=presets[$('#preset input:checked').value];for(const k of ['depth','minutes','history_pages','max_entities'])$('#'+k).value=p[k]}
-function kindsChosen(){return $$('#kinds input:checked').map(i=>i.value)}
+function applyPreset(){const p=presets[picked('#preset')[0]];for(const k of ['depth','minutes','history_pages','max_entities'])$('#'+k).value=p[k]}
+function showErr(m){$('#err').textContent=m||'';$('#err').hidden=!m}
+
 async function start(){
-  $('#starterr').textContent='';
-  const sources={};$$('#sources input').forEach(i=>sources[i.value]=i.checked);
-  const body={query:$('#query').value,extra:$('#extra').value,seeds:$('#seeds').value,preset:$('#preset input:checked').value,kinds:kindsChosen(),sources};
+  showErr('');const q=$('#query').value.trim();if(!q){$('#query').focus();return}
+  const sources={};$$('#sources .chip').forEach(b=>sources[b.dataset.v]=b.classList.contains('on'));
+  const body={query:q,extra:$('#extra').value,seeds:$('#seeds').value,preset:picked('#preset')[0],kinds:picked('#kinds'),sources};
   for(const k of ['depth','minutes','history_pages','max_entities'])body[k]=$('#'+k).value;
-  try{const r=await api('/api/jobs',{body});open_(r.id);loadJobs()}catch(e){$('#starterr').textContent=e.message}
+  try{
+    if(job&&job.status==='running')await api(`/api/jobs/${cur}/stop`,{body:{}});
+    const r=await api('/api/jobs',{body});$('#more').hidden=true;open_(r.id);
+  }catch(e){showErr(e.message)}
 }
-function open_(id){cur=id;curJob=null;$('#jobcard').hidden=false;$('#rescard').hidden=false;$('#fkind').value='';clearInterval(timer);poll();timer=setInterval(poll,3000);$('#jobcard').scrollIntoView({behavior:'smooth',block:'start'})}
+async function stop(){await api(`/api/jobs/${cur}/stop`,{body:{}});poll()}
+function open_(id){
+  cur=id;job=null;lastSig='';limit=100;$('#list').innerHTML='';$('#welcome').hidden=true;$('#results').hidden=false;
+  clearInterval(timer);poll();timer=setInterval(poll,1000);
+}
+function dur(s){return s>=3600?`${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m`:s>=60?`${Math.floor(s/60)}m ${s%60}s`:`${s}s`}
 async function poll(){
   if(!cur)return;let j;
   try{j=await api('/api/jobs/'+cur)}catch(e){clearInterval(timer);return}
-  curJob=j;const s=j.stats||{},run=j.status==='running';
-  $('#jtitle').textContent=j.query;$('#jstatus').textContent=run?'searching…':j.status;$('#jstatus').className='badge'+(run?' running':'');
-  $('#stop').hidden=!run;
-  const el=s.elapsed||0,t=`${Math.floor(el/3600)}h ${Math.floor(el%3600/60)}m ${el%60}s`.replace(/^0h /,'');
-  const items=[['relevant','Relevant chats'],['channels','Channels seen'],['groups','Groups seen'],['posts','Matching posts'],['checked','Links checked'],['queue','Still queued']];
-  $('#stats').innerHTML=items.map(([k,l])=>`<div class="stat"><b>${fmt(s[k]||0)}</b><span>${l}</span></div>`).join('')+`<div class="stat"><b>${t}</b><span>Elapsed</span></div>`;
-  if(j.log){$('#log').textContent=j.log.map(l=>new Date(l.t*1000).toLocaleTimeString()+'  '+l.msg).join('\n')}
-  else{const src=Object.entries(s.sources||{}).map(([k,v])=>`${k}: ${v}`).join(', ');$('#log').textContent=src?'Links found per source — '+src:'(log is kept only while the app is running)'}
-  if(!run){clearInterval(timer);loadJobs()}
-  loadResults();
+  const first=!job;job=j;const s=j.stats||{},run=j.status==='running';
+  if(first&&(document.activeElement!==$('#query')||!$('#query').value))$('#query').value=j.query;
+  $('#go').textContent=run&&$('#query').value.trim()===j.query?'Stop':'Search';$('#go').classList.toggle('stop',$('#go').textContent==='Stop');
+  const done={done:'Search complete',stopped:'Stopped','time limit':'Time limit reached',interrupted:'Interrupted (app was closed)'}[j.status]||j.status;
+  $('#status').innerHTML=(run?'<span class="spin"></span><span>Searching <b>'+esc(j.query)+'</b></span>':'<span><b>'+esc(done)+'</b> · '+esc(j.query)+'</span>')
+    +`<span>${fmt(s.checked||0)} links checked</span><span>${fmt(s.dead||0)} dead links skipped</span>`+(run?`<span>${fmt(s.queue||0)} queued</span>`:'')
+    +`<span>${dur(s.elapsed||0)}</span><button class="link" id="blog">Details</button>`;
+  $('#blog').onclick=()=>{$('#log').hidden=!$('#log').hidden};
+  $('#log').textContent=j.log?j.log.map(l=>new Date(l.t*1000).toLocaleTimeString()+'  '+l.msg).join('\n')
+    :'Links found per source: '+(Object.entries(s.sources||{}).map(([k,v])=>`${k} ${v}`).join(', ')||'—');
+  if(!run)clearInterval(timer);
+  load(false);
 }
 function params(){
-  const p=new URLSearchParams();const t=$('#ftext').value.trim();if(t)p.set('q',t);
+  const p=new URLSearchParams(),t=$('#ftext').value.trim();if(t)p.set('q',t);
   if(tab==='chats'){
-    let k=$('#fkind').value||((curJob?.params?.kinds)||['channel','group']).filter(x=>x!=='posts').join(',')||'channel,group';
-    p.set('kinds',k);if($('#fall').checked)p.set('all','1');if($('#fmin').value)p.set('min_members',$('#fmin').value);p.set('sort',$('#fsort').value);
+    const k=((job?.params?.kinds)||['channel','group']).filter(x=>x!=='posts');
+    p.set('kinds',(k.length?k:['channel','group']).join(','));p.set('sort',$('#fsort').value);
+    if(quick==='new')p.set('new','1');if(quick==='active')p.set('active','1');
   }
-  return p;
+  p.set('limit',limit);return p;
 }
-let loadSeq=0;
-async function loadResults(){
-  if(!cur)return;const seq=++loadSeq,p=params();p.set('limit',500);
-  const r=await api(`/api/jobs/${cur}/${tab==='chats'?'results':'posts'}?`+p);
-  if(seq!==loadSeq)return;
-  const q=params();q.set('what',tab);$('#expcsv').href=`/api/jobs/${cur}/export.csv?`+q;$('#expjson').href=`/api/jobs/${cur}/export.json?`+q;
-  $('#'+(tab==='chats'?'nchats':'nposts')).textContent=`(${fmt(r.total)})`;
-  $('#more').textContent=r.total>r.rows.length?`Showing the first ${r.rows.length} of ${fmt(r.total)} — narrow the filter or export to get everything.`:(r.total?'':'Nothing here yet.');
-  if(tab==='chats'){
-    $('#table').innerHTML='<tr><th>Chat</th><th>Members</th><th>Match</th><th>Posts</th><th>Found via</th></tr>'+r.rows.map(e=>`<tr>
-      <td><a href="${esc(e.url)}" target="_blank" rel="noopener"><b>${esc(e.title||e.ref)}</b></a>${e.verified?' ✓':''} <span class="kind">${esc(e.kind)}${e.ref[0]==='+'?' · private invite':''}</span><br>
-        <span class="hint">${e.ref[0]==='+'?'':'@'+esc(e.ref)}</span><div class="desc">${esc((e.description||'').slice(0,260))}</div></td>
-      <td class="num">${fmt(e.members)}</td>
-      <td>${e.matched.map(m=>`<span class="chip">${esc(m)}</span>`).join('')||'<span class="hint">related</span>'}</td>
-      <td class="num">${e.post_hits?`<a href="#" data-ch="${esc(e.ref)}">${e.post_hits}</a>`:''}</td>
-      <td>${e.sources.map(m=>`<span class="chip">${esc(m)}</span>`).join('')}${e.inbound?`<br><span class="hint">linked by ${e.inbound}</span>`:''}</td></tr>`).join('');
-    $$('#table a[data-ch]').forEach(a=>a.onclick=ev=>{ev.preventDefault();window.open(`https://t.me/s/${a.dataset.ch}?q=${encodeURIComponent((curJob?.params?.terms||[''])[0])}`,'_blank','noopener')});
-  }else{
-    $('#table').innerHTML='<tr><th>Date</th><th>Channel</th><th>Post</th><th>Views</th></tr>'+r.rows.map(p=>`<tr>
-      <td style="white-space:nowrap">${esc((p.date||'').slice(0,10))}</td>
-      <td><a href="https://t.me/${esc(p.channel)}" target="_blank" rel="noopener">@${esc(p.channel)}</a></td>
-      <td><div class="desc" style="color:inherit">${esc((p.text||'').slice(0,420))}${(p.text||'').length>420?'…':''}</div><a href="${esc(p.url)}" target="_blank" rel="noopener">open post</a></td>
-      <td class="num">${fmt(p.views)}</td></tr>`).join('');
-  }
+function ago(iso){
+  const d=(Date.now()-new Date(iso))/864e5;if(isNaN(d))return '';
+  if(d<1)return 'today';if(d<2)return 'yesterday';if(d<31)return Math.floor(d)+' days ago';
+  if(d<365)return Math.floor(d/30.4)+' mo ago';return new Date(iso).toLocaleDateString('en',{month:'short',year:'numeric'});
 }
-async function loadJobs(){
-  const js=await api('/api/jobs');if(!js.length){$('#jobs').textContent='None yet';return}
-  $('#jobs').innerHTML=js.map(j=>`<div class="j"><span><a href="#" data-id="${j.id}"><b>${esc(j.query)}</b></a> <span class="badge ${j.status==='running'?'running':''}">${esc(j.status)}</span>
-    <span class="hint">${new Date(j.created*1000).toLocaleString()} · ${fmt(j.stats.relevant||0)} chats · ${fmt(j.stats.posts||0)} posts</span></span>
-    <button class="danger" data-del="${j.id}">Delete</button></div>`).join('');
-  $$('#jobs a[data-id]').forEach(a=>a.onclick=e=>{e.preventDefault();open_(+a.dataset.id)});
-  $$('#jobs button[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this search and its results?'))return;await api('/api/jobs/'+b.dataset.del,{method:'DELETE'});if(cur==b.dataset.del){cur=null;$('#jobcard').hidden=$('#rescard').hidden=true}loadJobs()});
+function activity(e,running){
+  const a=e.activity||'unknown',last=e.last_post?'last post '+ago(e.last_post):'';
+  const txt={active:'Active'+(last?' · '+last:e.online?' · '+fmt(e.online)+' online':''),quiet:'Quiet · '+last,
+    inactive:'Inactive · '+(last||'no posts'),dead:'Gone · link no longer works',
+    unknown:running&&e.kind==='channel'?'Checking…':e.ref[0]==='+'?'Private · activity hidden':'Activity unknown'}[a];
+  return `<span class="act a-${a}"><i></i>${esc(txt)}</span>`;
+}
+const hue=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h};
+function chatRow(e,running){
+  const name=e.title||e.ref,priv=e.ref[0]==='+';
+  return `<a class="item ${e.kind==='dead'?'dead':''}" href="${esc(e.url)}" target="_blank" rel="noopener">
+    <div class="av" style="background:hsl(${hue(e.ref)} 55% 52%)">${esc([...name.trim()][0]||'?').toUpperCase()}${e.photo?`<img src="${esc(e.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</div>
+    <div class="main">
+      <div class="t"><b>${esc(name)}</b>${e.verified?'<span title="Verified">✓</span>':''}${e.is_new?'<span class="badge b-new">New</span>':''}<span class="badge b-kind">${esc(e.kind==='dead'?'gone':e.kind)}</span></div>
+      <div class="meta">${activity(e,running)}<span>${priv?'private invite link':'@'+esc(e.ref)}</span>${!e.is_new&&e.first_seen?`<span>seen before · ${new Date(e.first_seen*1000).toLocaleDateString('en',{day:'numeric',month:'short'})}</span>`:''}</div>
+      ${e.description?`<div class="desc">${esc(e.description.slice(0,300))}</div>`:''}
+      <div class="tags">${e.matched.map(m=>`<span class="tag">${esc(m)}</span>`).join('')}${e.post_hits?`<span class="tag">${e.post_hits} matching posts</span>`:''}${e.sources.map(m=>`<span class="tag src">${esc(m)}</span>`).join('')}</div>
+    </div>
+    <div class="side">${e.members!=null?`<b>${short(e.members)}</b><span>${e.kind==='group'?'members':'subscribers'}</span>`:''}</div></a>`;
+}
+function postRow(p){
+  return `<a class="item post" href="${esc(p.url)}" target="_blank" rel="noopener">
+    <div class="av" style="background:hsl(${hue(p.channel)} 55% 52%)">${esc(p.channel[0]).toUpperCase()}</div>
+    <div class="main"><div class="t"><b>@${esc(p.channel)}</b></div>
+      <div class="meta"><span>${esc(p.date?new Date(p.date).toLocaleDateString('en',{day:'numeric',month:'short',year:'numeric'}):'')}</span>${p.views!=null?`<span>${short(p.views)} views</span>`:''}</div>
+      <div class="desc">${esc((p.text||'').slice(0,600))}</div></div></a>`;
+}
+async function load(force){
+  if(!cur)return;const my=++seq,running=job?.status==='running';
+  let r;try{r=await api(`/api/jobs/${cur}/${tab==='chats'?'results':'posts'}?`+params())}catch(e){return}
+  if(my!==seq)return;
+  if(r.counts){$('#c-all').textContent=fmt(r.counts.all);$('#c-new').textContent=fmt(r.counts.new);$('#c-active').textContent=fmt(r.counts.active)}
+  const sig=tab+running+JSON.stringify(r.rows);
+  if(sig===lastSig&&!force)return;lastSig=sig;
+  $('#list').innerHTML=r.rows.length?r.rows.map(x=>tab==='chats'?chatRow(x,running):postRow(x)).join('')
+    :`<div class="empty">${running?'Looking… first results usually appear within a few seconds.':'<h3>Nothing found</h3>Try other words, add synonyms under “More options”, or search deeper.'}</div>`;
+  $('#showmore').hidden=r.total<=r.rows.length;$('#showmore').textContent=`Show more (${fmt(r.total-r.rows.length)} left)`;
+}
+async function loadHist(){
+  const js=await api('/api/jobs');
+  $('#hist').innerHTML=js.length?js.map(j=>`<div class="hrow"><span><a href="#" data-id="${j.id}">${esc(j.query)}</a><br>
+    <span class="hint">${new Date(j.created*1000).toLocaleString()} · ${fmt(j.stats.relevant||0)} chats · ${fmt(j.stats.posts||0)} posts · ${esc(j.status)}</span></span>
+    <button class="btn danger" data-del="${j.id}">Delete</button></div>`).join(''):'<p class="hint">No searches yet.</p>';
+  $$('#hist a[data-id]').forEach(a=>a.onclick=e=>{e.preventDefault();$('#dhist').close();open_(+a.dataset.id)});
+  $$('#hist [data-del]').forEach(b=>b.onclick=async()=>{
+    if(b.dataset.sure){await api('/api/jobs/'+b.dataset.del,{method:'DELETE'});if(cur==b.dataset.del){cur=null;clearInterval(timer);$('#results').hidden=true;$('#welcome').hidden=false;$('#go').textContent='Search';$('#go').classList.remove('stop')}loadHist()}
+    else{b.dataset.sure=1;b.textContent='Really delete?'}});
 }
 async function loadTg(msg){
   let s;try{s=await api('/api/tg/status')}catch(e){s={error:e.message}}
-  const box=$('#tgbox'),err=msg||s.error?`<div class="err">${esc(msg||s.error)}</div>`:'';
+  const box=$('#tgbox'),note=m=>m?`<p class="err" style="padding-left:0">${esc(m)}</p>`:'',err=note(msg||s.error);
+  $('#tgdot').classList.toggle('on',!!s.authorized);$('#tglabel').textContent=s.authorized?'Connected':'Account';
   if(s.authorized){
-    $('#tgline').innerHTML='<span class="ok">● Telegram account connected</span>';
-    box.innerHTML=`<span class="ok">Connected as ${esc(s.user)}.</span> Searches also use Telegram's internal search, similar channels, linked discussion groups and search inside public groups. The app only reads; it never joins or posts. <button id="tgout">Disconnect</button>`+err;
+    box.innerHTML=`<p><span class="ok">●</span> Connected as <b>${esc(s.user)}</b>.</p><p class="hint">Searches also use Telegram's internal search, similar channels, linked discussion groups and search inside public groups. The app only reads — it never joins, posts or messages.</p><button class="btn danger" id="tgout">Disconnect</button>`+err;
     $('#tgout').onclick=()=>tg('/api/tg/logout',{});return;
   }
-  $('#tgline').textContent='Telegram account not connected — using open-web sources only (see below).';
-  if(!s.installed){box.innerHTML='Not installed. To enable it, run <code>pip install telethon</code> and restart the app.'+err;return}
+  const intro='<p class="hint" style="margin-top:0">Optional. Connecting your own Telegram account makes searches much deeper: Telegram\'s internal search, similar channels, discussion groups and messages inside public groups. Read-only.</p>';
+  if(!s.installed){box.innerHTML=intro+'<p>To enable it, run <code>pip install telethon</code> and restart the app.</p>'+err;return}
   if(!s.configured){
-    box.innerHTML=`Get your own free API keys at <a href="https://my.telegram.org/apps" target="_blank" rel="noopener">my.telegram.org/apps</a> (log in → “API development tools”), then paste them here. They stay on this computer.
-      <div class="row"><div><label>api_id</label><input type="text" id="tgid"></div><div><label>api_hash</label><input type="text" id="tghash"></div></div>
-      <button id="tgsave" style="margin-top:10px">Save</button>`+err;
+    box.innerHTML=intro+`<p>1. Open <a href="https://my.telegram.org/apps" target="_blank" rel="noopener">my.telegram.org/apps</a>, log in and create an app (“API development tools”).<br>2. Paste the two values here. They stay on this device.</p>
+      <div class="grid"><div><label>api_id</label><input class="field" id="tgid" inputmode="numeric"></div><div><label>api_hash</label><input class="field" id="tghash"></div></div>
+      <p><button class="btn pri" id="tgsave">Save</button></p>`+err;
     $('#tgsave').onclick=()=>tg('/api/tg/config',{api_id:$('#tgid').value.trim(),api_hash:$('#tghash').value.trim()});return;
   }
-  box.innerHTML=`Log in with your phone number. Telegram sends a code to your Telegram app.
-    <div class="row"><div><label>Phone (international format)</label><input type="text" id="tgphone" placeholder="+123456789"></div>
-    <div><label>Code from Telegram</label><input type="text" id="tgcode"></div>
-    <div><label>2-step password (if you have one)</label><input type="password" id="tgpw"></div></div>
-    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button id="tgsend">1. Send code</button><button id="tglogin">2. Log in</button><button id="tgreset">Change API keys</button></div>`+err;
-  $('#tgsend').onclick=async()=>{try{await api('/api/tg/send_code',{body:{phone:$('#tgphone').value}});alert('Code sent. Check your Telegram app.')}catch(e){alert(e.message)}};
+  box.innerHTML=intro+`<label>Phone number (international format)</label><input class="field" id="tgphone" placeholder="+123456789" inputmode="tel">
+    <p><button class="btn" id="tgsend">Send code</button> <span class="hint" id="tgmsg"></span></p>
+    <label>Code from your Telegram app</label><input class="field" id="tgcode" inputmode="numeric">
+    <label>Two-step password (only if you set one)</label><input class="field" type="password" id="tgpw">
+    <p><button class="btn pri" id="tglogin">Log in</button> <button class="btn" id="tgreset">Change API keys</button></p>`+err;
+  const m=t=>$('#tgmsg').textContent=t;
+  $('#tgsend').onclick=async()=>{m('Sending…');try{await api('/api/tg/send_code',{body:{phone:$('#tgphone').value}});m('Code sent — check your Telegram app.')}catch(e){m(e.message)}};
   $('#tglogin').onclick=async()=>{try{let r=await api('/api/tg/sign_in',{body:{code:$('#tgcode').value}});
-      if(r.result==='password'){if(!$('#tgpw').value){alert('This account has a 2-step password. Enter it and press Log in again.');return}
-        r=await api('/api/tg/sign_in',{body:{password:$('#tgpw').value}})}loadTg()}catch(e){alert(e.message)}};
+      if(r.result==='password'){if(!$('#tgpw').value){m('This account has a two-step password — enter it and press Log in again.');return}
+        r=await api('/api/tg/sign_in',{body:{password:$('#tgpw').value}})}loadTg()}catch(e){m(e.message)}};
   $('#tgreset').onclick=()=>tg('/api/tg/config',{api_id:0,api_hash:''});
 }
 async function tg(path,body){try{await api(path,{body});loadTg()}catch(e){loadTg(e.message)}}

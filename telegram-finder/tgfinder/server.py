@@ -122,11 +122,13 @@ class Handler(BaseHTTPRequestHandler):
             flt = dict(
                 kinds=[k for k in q.get("kinds", "").split(",") if k] or None,
                 relevant_only=q.get("all") != "1", text=q.get("q", ""),
-                min_members=int(q.get("min_members") or 0), sort=q.get("sort", "score"))
+                min_members=int(q.get("min_members") or 0), sort=q.get("sort", "score"),
+                new_only=q.get("new") == "1", active_only=q.get("active") == "1")
             if action == "results":
                 total, rows = app.store.entities(jid, limit=min(int(q.get("limit") or 200), 1000),
                                                  offset=int(q.get("offset") or 0), **flt)
-                return self._send(200, {"total": total, "rows": rows})
+                return self._send(200, {"total": total, "rows": rows,
+                                        "counts": app.store.counts(jid, flt["kinds"])})
             if action == "posts":
                 total, rows = app.store.posts(jid, text=q.get("q", ""), channel=q.get("channel", ""),
                                               sort=q.get("sort", "date"),
@@ -140,7 +142,7 @@ class Handler(BaseHTTPRequestHandler):
                     cols = ["url", "channel", "date", "views", "matched", "text"]
                 else:
                     _, rows = app.store.entities(jid, limit=1_000_000, **flt)
-                    cols = ["url", "ref", "kind", "title", "members", "score", "relevant", "post_hits",
+                    cols = ["url", "ref", "kind", "title", "members", "activity", "last_post", "online", "is_new", "score", "relevant", "post_hits",
                             "inbound", "depth", "matched", "sources", "description"]
                 name = f"telegram-{what}-{jid}.{ext or 'csv'}"
                 head = {"Content-Disposition": f'attachment; filename="{name}"'}

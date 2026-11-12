@@ -97,7 +97,7 @@ def parse_count(s: str) -> int | None:
 class Fetcher:
     """Polite HTTP client: global rate limit, retries, back-off on 429."""
 
-    def __init__(self, min_interval: float = 0.3, timeout: float = 25):
+    def __init__(self, min_interval: float = 0.15, timeout: float = 25):
         self.min_interval = min_interval
         self.timeout = timeout
         self._lock = threading.Lock()
@@ -170,13 +170,20 @@ def parse_info(page: str) -> dict:
         kind = "group"
     else:
         kind = "user"
+    online = None
     if kind in ("channel", "group"):
         members = parse_count(extra.split(",")[0])
+        m = re.search(r"([\d\s\xa0]+)\s*online", extra)
+        if m:
+            online = parse_count(m.group(1))
+    photo = _first(r'<img class="tgme_page_photo_image[^"]*"[^>]*src="([^"]+)"', page)
     return {
         "kind": kind,
         "title": strip_tags(title).replace("✔", "").strip(),
         "description": strip_tags(desc_html),
         "members": members,
+        "online": online,
+        "photo": photo if photo and photo.startswith("https://") else None,
         "verified": "verified-icon" in title,
         "has_preview": 'tgme_page_context_link' in page and "/s/" in page,
         "refs": extract_refs(desc_html),

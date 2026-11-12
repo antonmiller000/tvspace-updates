@@ -34,6 +34,7 @@ class T(unittest.TestCase):
         i = tme.parse_info(INFO)
         self.assertEqual((i["kind"], i["title"], i["members"]), ("group", "Py Group", 9878))
         self.assertIn("other_chat", i["refs"])
+        self.assertEqual(i["online"], 1419)
         self.assertEqual(tme.parse_info("<html></html>")["kind"], "none")
 
     def test_posts(self):
@@ -59,6 +60,26 @@ class T(unittest.TestCase):
         tok = base64.urlsafe_b64encode(b"https://t.me/hidden_chan").decode().rstrip("=")
         page = websearch._decode_redirects(f'<a href="https://www.bing.com/ck/a?x=1&amp;u=a1{tok}&amp;ntb=1">')
         self.assertIn("hidden_chan", tme.extract_refs(page))
+
+
+class Memory(unittest.TestCase):
+    def test_new_then_known_and_activity(self):
+        import datetime, tempfile
+        from tgfinder.engine import activity_of
+        from tgfinder.store import Store
+        st = Store(os.path.join(tempfile.mkdtemp(), "t.sqlite"))
+        e = {"ref": "abcde", "kind": "channel", "title": "T"}
+        self.assertTrue(st.known_put(1, e)[0])     # first search: new
+        self.assertTrue(st.known_put(1, e)[0])     # still the same search
+        self.assertFalse(st.known_put(2, e)[0])    # later search: already known
+        now = datetime.datetime.now(datetime.timezone.utc)
+        iso = lambda d: (now - datetime.timedelta(days=d)).isoformat()
+        self.assertEqual(activity_of({"last_post": iso(3)}), "active")
+        self.assertEqual(activity_of({"last_post": iso(90)}), "quiet")
+        self.assertEqual(activity_of({"last_post": iso(900)}), "inactive")
+        self.assertEqual(activity_of({"online": 12}), "active")
+        self.assertEqual(activity_of({"kind": "dead", "last_post": iso(1)}), "dead")
+        self.assertEqual(activity_of({}), "unknown")
 
 
 if __name__ == "__main__":

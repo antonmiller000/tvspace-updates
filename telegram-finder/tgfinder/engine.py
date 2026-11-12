@@ -7,6 +7,7 @@ own post history), and relevant ones are read in turn.
 """
 from __future__ import annotations
 
+import datetime
 import heapq
 import itertools
 import threading
@@ -20,12 +21,36 @@ PRESETS = {
     "deep": {"depth": 2, "history_pages": 3, "minutes": 90, "max_entities": 8000, "guesses": 250, "pages_scale": 1.0},
     "exhaustive": {"depth": 4, "history_pages": 10, "minutes": 720, "max_entities": 40000, "guesses": 400, "pages_scale": 1.5},
 }
+ACTIVE_DAYS, QUIET_DAYS = 30, 180
+
+
+def activity_of(e: dict) -> str:
+    """active / quiet / inactive / dead / unknown, from the newest post or people online."""
+    if e.get("kind") == "dead":
+        return "dead"
+    lp = e.get("last_post")
+    if lp:
+        try:
+            when = datetime.datetime.fromisoformat(lp)
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=datetime.timezone.utc)
+            days = (datetime.datetime.now(datetime.timezone.utc) - when).days
+            return "active" if days <= ACTIVE_DAYS else "quiet" if days <= QUIET_DAYS else "inactive"
+        except ValueError:
+            pass
+    if e.get("online"):
+        return "active"
+    if e.get("peeked"):
+        return "inactive"  # readable channel with no posts at all
+    return "unknown"
+
+
 DEFAULT_SOURCES = {"web": True, "directories": True, "guess": True, "crawl": True, "telegram": True}
 
 
 class Job:
     def __init__(self, store, tg, query: str, extra: str = "", seeds: str = "", preset: str = "deep",
-                 kinds: list[str] | None = None, sources: dict | None = None, workers: int = 4, **overrides):
+                 kinds: list[str] | None = None, sources: dict | None = None, workers: int = 6, **overrides):
         self.store, self.tg = store, tg
         self.terms = keywords.parse_terms(query, extra)
         if not self.terms:
@@ -48,6 +73,7 @@ class Job:
         self.lock = threading.RLock()
         self.cv = threading.Condition(self.lock)
         self.heap: list = []
+        self.web_heap: list = []
         self.tg_heap: list = []
         self.seq = itertools.count()
         self.active = 0
@@ -57,7 +83,7 @@ class Job:
         self.deadline = self.started + self.p["minutes"] * 60
         self.log: list[dict] = []
         self.stats = {"checked": 0, "found": 0, "relevant": 0, "channels": 0, "groups": 0, "bots": 0,
-                      "posts": 0, "requests": 0, "queue": 0, "dead": 0}
+                      "posts": 0, "requests": 0, "queue": 0, "dead": 0, "new": 0, "active": 0}
         self.source_fail: dict[str, int] = {}
         self.source_found: dict[str, int] = {}
         self.use_tg = bool(self.sources.get("telegram") and tg and tg.ready())
@@ -65,6 +91,8 @@ class Job:
     # ------------------------------------------------------------ lifecycle
     def start(self):
         self._seed()
+        for i in range(2):
+            threading.Thread(target=self._worker, args=(self.web_heap, False), daemon=True, name=f"job{self.id}-web{i}").start()
         for i in range(self.workers):
             threading.Thread(target=self._worker, args=(self.heap, False), daemon=True, name=f"job{self.id}-w{i}").start()
         if self.use_tg:
@@ -84,7 +112,7 @@ class Job:
     def snapshot(self) -> dict:
         with self.lock:
             s = dict(self.stats)
-            s.update(queue=len(self.heap) + len(self.tg_heap), requests=self.fetcher.requests,
+            s.update(queue=len(self.heap) + len(self.web_heap) + len(self.tg_heap), requests=self.fetcher.requests,
                      elapsed=int(time.time() - self.started), sources=dict(self.source_found),
                      telegram_account=self.use_tg)
             return s
@@ -93,7 +121,7 @@ class Job:
         while True:
             time.sleep(1.5)
             with self.cv:
-                idle = not self.heap and not self.tg_heap and self.active == 0
+                idle = not self.heap and not self.web_heap and not self.tg_heap and self.active == 0
                 timeout = time.time() > self.deadline
                 if idle or timeout or self.stop_flag:
                     self.status = "stopped" if self.stop_flag else ("time limit" if timeout and not idle else "done")
@@ -109,7 +137,8 @@ class Job:
 
     def _push(self, prio: float, task: tuple, tg: bool = False):
         with self.cv:
-            heapq.heappush(self.tg_heap if tg else self.heap, (prio, next(self.seq), task))
+            heap = self.tg_heap if tg else self.web_heap if task[0] == "web" else self.heap
+            heapq.heappush(heap, (prio, next(self.seq), task))
             self.cv.notify_all()
 
     def _worker(self, heap: list, is_tg: bool):
@@ -134,6 +163,20 @@ class Job:
     # ------------------------------------------------------------ seeding
     def _seed(self):
         self.note("Keywords: " + " | ".join(self.terms))
+        # Instant answers: chats remembered from earlier searches that match now.
+        remembered = 0
+        for k in self.store.known_all():
+            if self.matcher.hits(f"{k['title']} {k['description']}") or self.matcher.username_hits(k["ref"]):
+                self.candidate(k["ref"], 0, "memory", prio=0.5 + remembered * 0.001)
+                e = self.ents.get(k["ref"])
+                if e and e["kind"] == "new":
+                    e.update({f: k[f] for f in ("kind", "title", "description", "members", "verified",
+                                                "last_post", "online", "photo", "first_seen")})
+                    e["cached"] = True
+                    self._rescore(e)
+                    remembered += 1
+        if remembered:
+            self.note(f"{remembered} matching chats remembered from earlier searches (re-checking them now)")
         for ref in self.seeds:
             self.candidate(ref, 0, "seed")
         if self.sources.get("web") or self.sources.get("directories"):
@@ -192,8 +235,10 @@ class Job:
             was = e.get("relevant", False)
             e["matched"] = name_hits | desc_hits | set(e.get("post_terms", ()))
             e["relevant"] = bool(name_hits or desc_hits or e["post_hits"])
+            e["activity"] = activity_of(e)
             e["score"] = round(10 * len(name_hits) + 5 * len(desc_hits) + min(e["post_hits"], 20)
-                               + 0.5 * min(len(e["inbound"]), 10) + 0.5 * (len(e["sources"]) - 1), 1)
+                               + 0.5 * min(len(e["inbound"]), 10) + 0.5 * (len(e["sources"]) - 1)
+                               + {"active": 2, "inactive": -3, "dead": -100}.get(e["activity"], 0), 1)
             if e["relevant"] and not was:
                 self.stats["relevant"] += 1
         if save:
@@ -218,18 +263,32 @@ class Job:
     def _t_inspect(self, ref: str):
         e = self.ents[ref]
         status, _u, body = self.fetcher.get(tme.info_url(ref))
-        info = tme.parse_info(body) if status == 200 else {"kind": "none"}
+        if status != 200:
+            return  # network trouble: keep whatever we knew, never call it dead
+        info = tme.parse_info(body)
+        cached = e.pop("cached", False)
         with self.lock:
             self.stats["checked"] += 1
-            e["kind"] = info["kind"]
             if info["kind"] in ("none", "user"):  # personal accounts are never catalogued
                 self.stats["dead"] += 1
-                return
-            e.update({k: info[k] for k in ("title", "description", "members", "verified", "has_preview")})
-            self.stats["found"] += 1
-            key = {"channel": "channels", "group": "groups", "bot": "bots"}.get(info["kind"])
-            if key:
-                self.stats[key] += 1
+                if not cached:
+                    e["kind"] = info["kind"]
+                    return
+                e["kind"] = "dead"  # was a live chat in an earlier search, gone now
+            else:
+                e["kind"] = info["kind"]
+                e.update({k: info[k] for k in ("title", "description", "members", "verified",
+                                               "has_preview", "online")})
+                e["photo"] = info["photo"] or e.get("photo")
+                self.stats["found"] += 1
+                key = {"channel": "channels", "group": "groups", "bot": "bots"}.get(info["kind"])
+                if key:
+                    self.stats[key] += 1
+        if e["kind"] == "dead":
+            self.store.known_forget(ref)
+            self._rescore(e)
+            return
+        e["is_new"], e["first_seen"] = self.store.known_put(self.id, e)
         self._rescore(e)
         expand = e["relevant"] and e["depth"] < self.p["depth"]
         if expand:
@@ -274,8 +333,20 @@ class Job:
         e = self.ents[ref]
         can_follow = e["depth"] < self.p["depth"]
         was_relevant = e.get("relevant", False)
-        terms = self.terms[:8] if was_relevant else self.terms[:3]
-        for term in terms:
+        first, before = [], None
+        if not e.get("peeked"):
+            # Newest posts: tells whether the channel is alive, and what it talks about.
+            status, _u, body = self.fetcher.get(tme.preview_url(ref))
+            if status == 200:
+                parsed = tme.parse_posts(body)
+                first, before = parsed["posts"], parsed["before"]
+                e["peeked"] = True
+                dates = [p["date"] for p in first if p["date"]]
+                if dates:
+                    e["last_post"] = max(dates)
+                self._record_posts(e, first, None, follow=False)
+                self._rescore(e)
+        for term in (self.terms[:8] if e["relevant"] else self.terms[:3]):
             if term in e["searched"] or self.stop_flag:
                 continue
             e["searched"].add(term)
@@ -284,14 +355,18 @@ class Job:
                 break
             self._record_posts(e, tme.parse_posts(body)["posts"], term, follow=False)
         self._rescore(e)
+        self.store.known_put(self.id, e)
         if not e["relevant"] or e["crawled"]:
             return
         if not was_relevant and self.use_tg:
             self._push(e["depth"] * 10 + 3, ("tg_related", ref), tg=True)
         e["crawled"] = True
-        before = None
-        for _page in range(self.p["history_pages"]):
-            if self.stop_flag:
+        if can_follow:
+            for p in first:
+                for r in p["refs"]:
+                    self.candidate(r, e["depth"] + 1, "post", ref)
+        for _page in range(self.p["history_pages"] - 1):
+            if self.stop_flag or not before:
                 break
             status, _u, body = self.fetcher.get(tme.preview_url(ref, before=before))
             if status != 200:
@@ -299,7 +374,7 @@ class Job:
             parsed = tme.parse_posts(body)
             self._record_posts(e, parsed["posts"], None, follow=can_follow)
             before = parsed["before"]
-            if not before or not parsed["posts"]:
+            if not parsed["posts"]:
                 break
         self._rescore(e)
 
@@ -361,6 +436,9 @@ class Job:
                 continue
             e["searched"].add(term)
             self._record_posts(e, self.tg.search_in(ref, term), term, follow=e["depth"] < self.p["depth"])
+        if not e.get("last_post"):
+            e["last_post"] = self.tg.last_date(ref) or None
         self._rescore(e)
+        self.store.known_put(self.id, e)
         if e["relevant"] and not was:
             self._push(e["depth"] * 10 + 3, ("tg_related", ref), tg=True)

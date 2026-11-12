@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+        web.setWebChromeClient(new android.webkit.WebChromeClient());
         web.setDownloadListener((url, ua, disposition, mime, len) -> save(url, URLUtil.guessFileName(url, disposition, mime), mime));
         web.loadData("<body style='font:18px sans-serif;text-align:center;padding-top:40vh;color:#888'>Starting Telegram Finder…</body>", "text/html", "utf-8");
         new Thread(this::waitForServer, "wait-server").start();
